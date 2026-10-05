@@ -56,36 +56,47 @@ export default function GamePage() {
     }).catch(() => {});
   }, [phase, console2, multiplier]);
 
-  // Exponential flight loop
+  const currentGameRef = useRef({ console1, console2, cashOut1, cashOut2 });
+  currentGameRef.current = { console1, console2, cashOut1, cashOut2 };
+
   useEffect(() => {
-    let start = Date.now();
-    let timer = setInterval(() => {
+    if (phase !== "IN_FLIGHT") return;
+
+    const start = Date.now();
+    const timer = window.setInterval(() => {
       const elapsed = (Date.now() - start) / 1000;
       const m = parseFloat((1.00 * Math.pow(Math.E, 0.07 * elapsed)).toFixed(2));
+      const { console1: currentConsole1, console2: currentConsole2, cashOut1: currentCashOut1, cashOut2: currentCashOut2 } = currentGameRef.current;
 
-      if (console1.isLocked && !console1.hasCashedOut && console1.autoCashout && m >= console1.autoMultiplier) cashOut1();
-      if (console2.isLocked && !console2.hasCashedOut && console2.autoCashout && m >= console2.autoMultiplier) cashOut2();
+      if (currentConsole1.isLocked && !currentConsole1.hasCashedOut && currentConsole1.autoCashout && m >= currentConsole1.autoMultiplier) currentCashOut1();
+      if (currentConsole2.isLocked && !currentConsole2.hasCashedOut && currentConsole2.autoCashout && m >= currentConsole2.autoMultiplier) currentCashOut2();
 
       if (m >= crashTarget) {
         setMultiplier(crashTarget);
         setPhase("CRASHED");
         setHistory(h => [crashTarget, ...h.slice(0, 15)]);
-        clearInterval(timer);
-
-        setTimeout(() => {
-          setMultiplier(1.0);
-          setCrashTarget(parseFloat((1.15 + Math.random() * 6.5).toFixed(2)));
-          setPhase("IN_FLIGHT");
-          setConsole1(c => ({ ...c, hasCashedOut: false }));
-          setConsole2(c => ({ ...c, hasCashedOut: false }));
-        }, 3200);
+        window.clearInterval(timer);
       } else {
         setMultiplier(m);
       }
     }, 50);
 
-    return () => clearInterval(timer);
-  }, [phase, crashTarget, console1, console2, cashOut1, cashOut2]);
+    return () => window.clearInterval(timer);
+  }, [phase, crashTarget]);
+
+  useEffect(() => {
+    if (phase !== "CRASHED") return;
+
+    const resetTimer = window.setTimeout(() => {
+      setMultiplier(1.0);
+      setCrashTarget(parseFloat((1.15 + Math.random() * 6.5).toFixed(2)));
+      setConsole1(c => ({ ...c, isLocked: false, betId: null, hasCashedOut: false, cashedOutMultiplier: null, winAmount: null }));
+      setConsole2(c => ({ ...c, isLocked: false, betId: null, hasCashedOut: false, cashedOutMultiplier: null, winAmount: null }));
+      setPhase("IN_FLIGHT");
+    }, 3200);
+
+    return () => window.clearTimeout(resetTimer);
+  }, [phase]);
 
   return (
     <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col">
