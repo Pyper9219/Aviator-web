@@ -5,8 +5,8 @@ import { User } from "@/lib/db/models/User";
 import { getJwtSecret } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-  const secret = getJwtSecret();
   try {
+    const secret = getJwtSecret();
     const token = req.cookies.get("aviator_session")?.value;
     if (!token) return NextResponse.json({ user: null });
 

@@ -3,7 +3,6 @@ import { jwtVerify } from "jose";
 import { getJwtSecret } from "@/lib/auth";
 
 export async function proxy(req: NextRequest) {
-  const secret = getJwtSecret();
   const { pathname } = req.nextUrl;
 
   // Protected paths
@@ -17,10 +16,11 @@ export async function proxy(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
     try {
-      await jwtVerify(token, secret);
+      await jwtVerify(token, getJwtSecret());
       return NextResponse.next();
     } catch (err) {
       const loginUrl = new URL("/auth/login", req.url);
+      loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }
   }
@@ -30,7 +30,7 @@ export async function proxy(req: NextRequest) {
     const token = req.cookies.get("aviator_session")?.value;
     if (token) {
       try {
-        await jwtVerify(token, secret);
+        await jwtVerify(token, getJwtSecret());
         return NextResponse.redirect(new URL("/", req.url));
       } catch (e) {}
     }
