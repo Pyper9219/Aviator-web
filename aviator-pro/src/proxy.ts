@@ -2,7 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { getJwtSecret } from "@/lib/auth";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const secret = getJwtSecret();
   const { pathname } = req.nextUrl;
 
