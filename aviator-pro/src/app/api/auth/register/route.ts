@@ -7,19 +7,28 @@ import { getJwtSecret } from "@/lib/auth";
 
 async function removeObsoleteEmailIndex() {
   const indexes = await User.collection.indexes();
-  const emailIndex = indexes.find(
-    (index) => index.name === "email_1" && index.key.email === 1 && Object.keys(index.key).length === 1
+  const obsoleteEmailIndexes = indexes.filter(
+    (index) => index.unique === true && index.key.email === 1 && Object.keys(index.key).length === 1
   );
 
-  if (!emailIndex?.name) return;
-
-  try {
-    await User.collection.dropIndex(emailIndex.name);
-  } catch (error) {
-    if (!(error instanceof Error) || !("code" in error) || error.code !== 27) {
-      throw error;
+  for (const index of obsoleteEmailIndexes) {
+    if (!index.name) continue;
+    try {
+      await User.collection.dropIndex(index.name);
+    } catch (error) {
+      if (!(error instanceof Error) || !("code" in error) || error.code !== 27) {
+        throw error;
+      }
     }
   }
+}
+
+function getDuplicateField(error: unknown): string | null {
+  if (typeof error !== "object" || error === null || !("keyPattern" in error)) return null;
+  const keyPattern = error.keyPattern;
+  if (typeof keyPattern !== "object" || keyPattern === null) return null;
+  const fields = Object.keys(keyPattern);
+  return fields.length === 1 ? fields[0] : null;
 }
 
 export async function POST(req: NextRequest) {
@@ -37,9 +46,11 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
     await removeObsoleteEmailIndex();
 
-    const existing = await User.findOne({ $or: [{ username }, { phoneOrEmail }] });
-    if (existing) {
-      return NextResponse.json({ error: "Username or Phone/Email already registered" }, { status: 400 });
+    if (await User.exists({ username })) {
+      return NextResponse.json({ error: "That username is already registered" }, { status: 409 });
+    }
+    if (await User.exists({ phoneOrEmail })) {
+      return NextResponse.json({ error: "That phone number or email is already registered" }, { status: 409 });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -71,9 +82,18 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
+      const field = getDuplicateField(error);
+      if (field === "username") {
+        return NextResponse.json({ error: "That username is already registered" }, { status: 409 });
+      }
+      if (field === "phoneOrEmail") {
+        return NextResponse.json({ error: "That phone number or email is already registered" }, { status: 409 });
+      }
+
+      console.error("Registration blocked by an unexpected unique index", error);
       return NextResponse.json(
-        { error: "Username or phone/email is already registered" },
-        { status: 409 }
+        { error: "Account registration is temporarily unavailable. Please try again shortly." },
+        { status: 503 }
       );
     }
 
