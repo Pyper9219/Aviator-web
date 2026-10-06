@@ -225,10 +225,10 @@ export default function GamePage() {
       </div>
 
       {/* Main Responsive Grid: 1 col on mobile, 12 cols on desktop/laptops */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 pb-20 md:pb-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 lg:p-6 grid grid-cols-1 xl:grid-cols-12 gap-4 pb-20 md:pb-6">
 
-        {/* Left Section: Flight Radar & Consoles (8 Cols on laptop) */}
-        <section className="lg:col-span-8 flex flex-col gap-4">
+        {/* Keep the live feed full-width until the viewport can fit both panels comfortably. */}
+        <section className="xl:col-span-8 flex flex-col gap-4">
           <FlightDeck multiplier={multiplier} phase={phase} countdownSeconds={countdown} />
 
           {/* Dual Betting Consoles */}
@@ -318,8 +318,7 @@ export default function GamePage() {
           </div>
         </section>
 
-        {/* Right Section: Community Ledger & Live Players (4 Cols on laptop) */}
-        <section className="lg:col-span-4 bg-[#10131A] border border-[#282C35] rounded-2xl p-4 flex flex-col">
+        <section className="xl:col-span-4 bg-[#10131A] border border-[#282C35] rounded-2xl p-4 flex flex-col">
           <div className="flex justify-between items-center pb-3 border-b border-[#282C35] text-xs font-mono">
             <span className="flex items-center gap-1.5 text-zinc-300">
               <Users size={14} className="text-[#00E575]" /> Active Orbiters ({liveBets.length})

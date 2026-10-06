@@ -5,16 +5,37 @@ import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { getJwtSecret } from "@/lib/auth";
 
+async function removeObsoleteEmailIndex() {
+  const indexes = await User.collection.indexes();
+  const emailIndex = indexes.find(
+    (index) => index.name === "email_1" && index.key.email === 1 && Object.keys(index.key).length === 1
+  );
+
+  if (!emailIndex?.name) return;
+
+  try {
+    await User.collection.dropIndex(emailIndex.name);
+  } catch (error) {
+    if (!(error instanceof Error) || !("code" in error) || error.code !== 27) {
+      throw error;
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const secret = getJwtSecret();
-    const { username, phoneOrEmail, password } = await req.json();
+    const body = await req.json();
+    const username = typeof body.username === "string" ? body.username.trim() : "";
+    const phoneOrEmail = typeof body.phoneOrEmail === "string" ? body.phoneOrEmail.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
 
     if (!username || !phoneOrEmail || !password) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
     await connectToDatabase();
+    await removeObsoleteEmailIndex();
 
     const existing = await User.findOne({ $or: [{ username }, { phoneOrEmail }] });
     if (existing) {
@@ -48,7 +69,15 @@ export async function POST(req: NextRequest) {
     });
 
     return res;
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Registration failed" }, { status: 500 });
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
+      return NextResponse.json(
+        { error: "Username or phone/email is already registered" },
+        { status: 409 }
+      );
+    }
+
+    console.error("Registration failed", error);
+    return NextResponse.json({ error: "Unable to create account" }, { status: 500 });
   }
 }
