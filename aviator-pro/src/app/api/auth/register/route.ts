@@ -8,7 +8,7 @@ import { getJwtSecret } from "@/lib/auth";
 async function removeObsoleteEmailIndex() {
   const indexes = await User.collection.indexes();
   const obsoleteEmailIndexes = indexes.filter(
-    (index) => index.unique === true && index.key.email === 1 && Object.keys(index.key).length === 1
+    (index) => index.key.email === 1 && Object.keys(index.key).length === 1
   );
 
   for (const index of obsoleteEmailIndexes) {
@@ -24,11 +24,45 @@ async function removeObsoleteEmailIndex() {
 }
 
 function getDuplicateField(error: unknown): string | null {
-  if (typeof error !== "object" || error === null || !("keyPattern" in error)) return null;
-  const keyPattern = error.keyPattern;
-  if (typeof keyPattern !== "object" || keyPattern === null) return null;
-  const fields = Object.keys(keyPattern);
-  return fields.length === 1 ? fields[0] : null;
+  if (typeof error !== "object" || error === null) return null;
+
+  if ("keyPattern" in error) {
+    const keyPattern = error.keyPattern;
+    if (typeof keyPattern === "object" && keyPattern !== null) {
+      const fields = Object.keys(keyPattern);
+      if (fields.length === 1) return fields[0];
+    }
+  }
+
+  if ("message" in error && typeof error.message === "string") {
+    const match = error.message.match(/index:\s+([A-Za-z0-9_]+)_1\b|dup key:\s+\{\s*([A-Za-z0-9_]+)\s*:/);
+    return match?.[1] ?? match?.[2] ?? null;
+  }
+
+  return null;
+}
+
+function isDuplicateKeyError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
+}
+
+async function createUserWithLegacyIndexRetry(userData: {
+  username: string;
+  phoneOrEmail: string;
+  passwordHash: string;
+  balanceUSD: number;
+  withdrawableBalanceUSD: number;
+  bonusBalanceUSD: number;
+  vipLevel: number;
+}) {
+  try {
+    return await User.create(userData);
+  } catch (error) {
+    if (!isDuplicateKeyError(error) || getDuplicateField(error) !== "email") throw error;
+
+    await removeObsoleteEmailIndex();
+    return User.create(userData);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -56,7 +90,7 @@ export async function POST(req: NextRequest) {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const user = await User.create({
+    const user = await createUserWithLegacyIndexRetry({
       username,
       phoneOrEmail,
       passwordHash,
@@ -81,7 +115,7 @@ export async function POST(req: NextRequest) {
 
     return res;
   } catch (error) {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
+    if (isDuplicateKeyError(error)) {
       const field = getDuplicateField(error);
       if (field === "username") {
         return NextResponse.json({ error: "That username is already registered" }, { status: 409 });
