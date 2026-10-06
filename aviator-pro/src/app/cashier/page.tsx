@@ -2,15 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
-import { Smartphone, CreditCard, ShieldCheck, CheckCircle2, Zap, ArrowRight, Loader2 } from "lucide-react";
+import { CreditCard, CheckCircle2 } from "lucide-react";
 
 export default function CashierPage() {
-  const [balance, setBalance] = useState(250.0);
+  const [balance, setBalance] = useState(0);
   const [method, setMethod] = useState<"MPESA" | "AIRTEL" | "CARD">("MPESA");
   const [phone, setPhone] = useState("07");
   const [amountUSD, setAmountUSD] = useState(25);
-  const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -19,27 +17,6 @@ export default function CashierPage() {
         if (data.user) setBalance(data.user.balanceUSD);
       });
   }, []);
-
-  const handleDeposit = async () => {
-    setLoading(true);
-    setStatusMessage("");
-    try {
-      const res = await fetch("/api/cashier/deposit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method, phone, amountUSD, currency: "KES" })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Deposit initiation failed");
-
-      setBalance(b => b + amountUSD);
-      setStatusMessage(`SUCCESS: STK Push prompt sent to ${phone}. $${amountUSD} has been credited to your cockpit balance.`);
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col">
@@ -57,11 +34,9 @@ export default function CashierPage() {
           </div>
         </div>
 
-        {statusMessage && (
-          <div className="mb-6 p-4 bg-emerald-950/70 border border-[#00E575] rounded-xl text-xs sm:text-sm text-[#00E575] font-mono">
-            {statusMessage}
-          </div>
-        )}
+        <div role="status" className="mb-6 rounded-xl border border-amber-700 bg-amber-950/50 p-4 text-sm text-amber-200">
+          Deposits are unavailable until a verified payment provider is configured. No balance is credited before the provider confirms payment.
+        </div>
 
         {/* Method Picker */}
         <div className="mb-6">
@@ -69,6 +44,7 @@ export default function CashierPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* M-PESA */}
             <button
+              disabled
               onClick={() => setMethod("MPESA")}
               className={`p-4 rounded-xl border flex items-center justify-between text-left transition-all ${
                 method === "MPESA" ? "bg-[#191C22] border-[#00A859] ring-2 ring-[#00A859]/30" : "bg-[#10131A] border-[#282C35]"
@@ -88,6 +64,7 @@ export default function CashierPage() {
 
             {/* Airtel Money */}
             <button
+              disabled
               onClick={() => setMethod("AIRTEL")}
               className={`p-4 rounded-xl border flex items-center justify-between text-left transition-all ${
                 method === "AIRTEL" ? "bg-[#191C22] border-[#E31837] ring-2 ring-[#E31837]/30" : "bg-[#10131A] border-[#282C35]"
@@ -107,6 +84,7 @@ export default function CashierPage() {
 
             {/* Paystack Card */}
             <button
+              disabled
               onClick={() => setMethod("CARD")}
               className={`p-4 rounded-xl border flex items-center justify-between text-left transition-all ${
                 method === "CARD" ? "bg-[#191C22] border-[#00E575] ring-2 ring-[#00E575]/30" : "bg-[#10131A] border-[#282C35]"
@@ -132,6 +110,7 @@ export default function CashierPage() {
                 {method} REGISTERED MOBILE PHONE NUMBER
               </label>
               <input
+                disabled
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -139,7 +118,7 @@ export default function CashierPage() {
                 className="w-full bg-[#0B0E14] border border-[#282C35] rounded-xl px-4 py-3 text-sm text-white font-mono focus:outline-none focus:border-[#00E575]"
               />
               <span className="text-[10px] text-zinc-500 mt-1 block">
-                A PIN prompt (STK push) will appear on your phone to authorize.
+                Mobile-money payments are unavailable until a verified provider is configured.
               </span>
             </div>
           )}
@@ -149,6 +128,7 @@ export default function CashierPage() {
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {[10, 25, 50, 100, 250, 500].map((amt) => (
                 <button
+                  disabled
                   key={amt}
                   onClick={() => setAmountUSD(amt)}
                   className={`py-2 px-3 rounded-xl border font-mono text-xs font-bold transition-all ${
@@ -169,23 +149,16 @@ export default function CashierPage() {
               <span className="text-2xl font-black text-white">${amountUSD.toFixed(2)}</span>
             </div>
             <div className="text-right">
-              <span className="text-xs text-zinc-400 block">ESTIMATED LOCAL COST</span>
-              <span className="text-lg font-bold text-[#00E575]">KES {(amountUSD * 135).toLocaleString()}</span>
+              <span className="text-xs text-zinc-400 block">LOCAL PAYMENT COST</span>
+              <span className="text-sm font-bold text-zinc-400">Unavailable</span>
             </div>
           </div>
 
           <button
-            onClick={handleDeposit}
-            disabled={loading}
-            className="w-full py-4 bg-[#E51E3D] hover:bg-[#FF2B4D] disabled:opacity-50 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 active:scale-98 transition-all"
+            disabled
+            className="w-full py-4 bg-[#E51E3D] disabled:opacity-50 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
           >
-            {loading ? <Loader2 className="animate-spin" size={20} /> : (
-              <>
-                <Zap size={18} />
-                <span>Authorize {method} Deposit (${amountUSD.toFixed(2)})</span>
-                <ArrowRight size={18} />
-              </>
-            )}
+            Deposits unavailable
           </button>
         </div>
       </main>

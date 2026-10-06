@@ -3,8 +3,9 @@
 import React from "react";
 import { GamePhase } from "@/types";
 
-export default function FlightDeck({ multiplier, phase }: { multiplier: number; phase: GamePhase }) {
+export default function FlightDeck({ multiplier, phase, countdownSeconds }: { multiplier: number; phase: GamePhase; countdownSeconds: number }) {
   const isCrashed = phase === "CRASHED";
+  const isPreparing = phase === "PREPARING";
   const progress = Math.min((multiplier - 1.0) / 4.0, 1.0);
   const planeX = 15 + progress * 68;
   const planeY = 85 - Math.pow(progress, 0.8) * 65;
@@ -15,7 +16,7 @@ export default function FlightDeck({ multiplier, phase }: { multiplier: number; 
 
       <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-[#10131A]/90 border border-[#282C35] rounded text-[11px] font-mono text-zinc-300">
         <span className={`w-2 h-2 rounded-full ${isCrashed ? "bg-red-500" : "bg-[#00E575] animate-ping"}`} />
-        <span>{isCrashed ? "FLEW AWAY" : "IN FLIGHT"}</span>
+        <span>{isCrashed ? "FLEW AWAY" : isPreparing ? "PREPARING" : "IN FLIGHT"}</span>
         <span className="text-zinc-500">|</span>
         <span>ALT: {Math.floor(multiplier * 1840)}M</span>
       </div>
@@ -49,6 +50,11 @@ export default function FlightDeck({ multiplier, phase }: { multiplier: number; 
             <h2 className="text-red-500 font-extrabold text-3xl sm:text-4xl tracking-widest uppercase">FLEW AWAY!</h2>
             <p className="text-zinc-400 font-mono text-lg mt-1">@ {multiplier.toFixed(2)}x</p>
           </div>
+        ) : isPreparing ? (
+          <div>
+            <div className="text-4xl sm:text-5xl font-black text-amber-400">{countdownSeconds}s</div>
+            <div className="mt-2 text-xs font-mono text-zinc-400">NEXT FLIGHT STARTS IN</div>
+          </div>
         ) : (
           <div>
             <div className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tight text-white font-mono drop-shadow-[0_0_25px_rgba(229,30,61,0.5)]">
@@ -63,7 +69,7 @@ export default function FlightDeck({ multiplier, phase }: { multiplier: number; 
       </div>
 
       <div className="absolute bottom-2 left-4 right-4 flex justify-between text-[10px] font-mono text-zinc-500">
-        <span>RADAR: ONLINE</span>
+        <span>{isPreparing ? "BETS OPEN" : "RADAR: ONLINE"}</span>
         <span>LATENCY: 14MS</span>
       </div>
     </div>

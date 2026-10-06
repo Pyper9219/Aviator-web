@@ -1,12 +1,17 @@
 import { NextResponse, NextRequest } from "next/server";
 import { jwtVerify } from "jose";
-import { getJwtSecret } from "@/lib/auth";
+import { getAdminUserIds, getJwtSecret } from "@/lib/auth";
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Protected paths
-  const isProtected = pathname === "/" || pathname.startsWith("/bets") || pathname.startsWith("/cashier");
+  const isProtected =
+    pathname === "/" ||
+    pathname.startsWith("/bets") ||
+    pathname.startsWith("/cashier") ||
+    pathname.startsWith("/withdraw") ||
+    pathname.startsWith("/admin/withdrawals");
 
   if (isProtected) {
     const token = req.cookies.get("aviator_session")?.value;
@@ -16,7 +21,13 @@ export async function proxy(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
     try {
-      await jwtVerify(token, getJwtSecret());
+      const { payload } = await jwtVerify(token, getJwtSecret());
+      if (pathname.startsWith("/admin/withdrawals")) {
+        const adminIds = getAdminUserIds();
+        if (!adminIds.length || typeof payload.id !== "string" || !adminIds.includes(payload.id)) {
+          return NextResponse.redirect(new URL("/", req.url));
+        }
+      }
       return NextResponse.next();
     } catch (err) {
       const loginUrl = new URL("/auth/login", req.url);
@@ -40,5 +51,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/bets/:path*", "/cashier/:path*", "/auth/:path*"]
+  matcher: ["/", "/bets/:path*", "/cashier/:path*", "/withdraw/:path*", "/admin/withdrawals/:path*", "/auth/:path*"]
 };

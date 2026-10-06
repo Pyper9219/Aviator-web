@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Rocket, ListOrdered, Wallet, Shield } from "lucide-react";
+import { Rocket, ListOrdered, Wallet, Banknote } from "lucide-react";
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -14,6 +14,7 @@ export default function Navigation() {
     { label: "Flight Deck", href: "/", icon: Rocket },
     { label: "Live Bets", href: "/bets", icon: ListOrdered },
     { label: "Deposit (M-PESA/Airtel)", href: "/cashier", icon: Wallet },
+    { label: "Withdraw", href: "/withdraw", icon: Banknote },
   ];
 
   return (

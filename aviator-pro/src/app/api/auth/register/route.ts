@@ -28,8 +28,9 @@ export async function POST(req: NextRequest) {
       username,
       phoneOrEmail,
       passwordHash,
-      balanceUSD: 250.00,
-      bonusBalanceUSD: 50.00,
+      balanceUSD: 0,
+      withdrawableBalanceUSD: 0,
+      bonusBalanceUSD: 0,
       vipLevel: 1
     });
 

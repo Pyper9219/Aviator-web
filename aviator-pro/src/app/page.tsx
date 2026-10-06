@@ -6,20 +6,37 @@ import FlightDeck from "@/components/FlightDeck";
 import { GamePhase, IBetSlot } from "@/types";
 import { Minus, Plus, Zap, Trophy, Users, ShieldCheck } from "lucide-react";
 
+interface LiveBet {
+  _id: string;
+  username: string;
+  stakeAmount: number;
+  status: "ACTIVE" | "CASHED_OUT" | "LOST";
+  cashedOutMultiplier?: number;
+  payoutAmount: number;
+}
+
 export default function GamePage() {
-  const [balance, setBalance] = useState(250.00);
+  const [balance, setBalance] = useState(0);
   const [username, setUsername] = useState("Pilot");
+  const [liveBets, setLiveBets] = useState<LiveBet[]>([]);
+  const [gameError, setGameError] = useState("");
+  const [feedError, setFeedError] = useState("");
   const [multiplier, setMultiplier] = useState(1.00);
-  const [phase, setPhase] = useState<GamePhase>("IN_FLIGHT");
-  const [history, setHistory] = useState([3.42, 1.20, 14.50, 2.10, 1.05, 5.80, 2.30]);
-  const [crashTarget, setCrashTarget] = useState(4.80);
+  const [phase, setPhase] = useState<GamePhase>("PREPARING");
+  const [roundNumber, setRoundNumber] = useState(0);
+  const [serverStartedAt, setServerStartedAt] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState(5);
+  const [history, setHistory] = useState<number[]>([]);
 
   const [console1, setConsole1] = useState<IBetSlot>({
-    stake: 10, autoCashout: false, autoMultiplier: 2.0, isLocked: true, betId: "b1", hasCashedOut: false, cashedOutMultiplier: null, winAmount: null
+    stake: 10, autoCashout: false, autoMultiplier: 2.0, isLocked: false, betId: null, hasCashedOut: false, cashedOutMultiplier: null, winAmount: null
   });
   const [console2, setConsole2] = useState<IBetSlot>({
     stake: 5, autoCashout: true, autoMultiplier: 2.5, isLocked: false, betId: null, hasCashedOut: false, cashedOutMultiplier: null, winAmount: null
   });
+
+  const observedRound = useRef(0);
+  const settledRound = useRef(0);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -32,71 +49,161 @@ export default function GamePage() {
       });
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const refreshRound = async () => {
+      try {
+        const response = await fetch("/api/game/state", { cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Unable to load game round");
+        if (!active) return;
+
+        if (observedRound.current !== data.roundNumber) {
+          observedRound.current = data.roundNumber;
+          setRoundNumber(data.roundNumber);
+          setConsole1(c => ({ ...c, isLocked: false, betId: null, hasCashedOut: false, cashedOutMultiplier: null, winAmount: null }));
+          setConsole2(c => ({ ...c, isLocked: false, betId: null, hasCashedOut: false, cashedOutMultiplier: null, winAmount: null }));
+        }
+        setPhase(data.phase);
+        setServerStartedAt(data.startedAt);
+        setCountdown(Math.max(0, Math.ceil((data.startsAt - Date.now()) / 1_000)));
+        if (data.phase === "CRASHED" && settledRound.current !== data.roundNumber) {
+          settledRound.current = data.roundNumber;
+          setMultiplier(data.crashMultiplier);
+          setHistory(items => [data.crashMultiplier, ...items.slice(0, 15)]);
+        }
+        setGameError("");
+      } catch (error) {
+        if (active) setGameError(error instanceof Error ? error.message : "Unable to load game round");
+      }
+    };
+
+    void refreshRound();
+    const timer = window.setInterval(() => void refreshRound(), 1000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const refreshBets = async () => {
+      try {
+        const response = await fetch("/api/game/bets", { cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Unable to refresh live bets");
+        if (active) {
+          setLiveBets(data.bets);
+          setFeedError("");
+        }
+      } catch (error) {
+        if (active) setFeedError(error instanceof Error ? error.message : "Unable to refresh live bets");
+      }
+    };
+
+    void refreshBets();
+    const timer = window.setInterval(() => void refreshBets(), 3000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const placeBet = useCallback(async (slot: 1 | 2) => {
+    const betSlot = slot === 1 ? console1 : console2;
+    setGameError("");
+    try {
+      const response = await fetch("/api/game/bet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stakeAmount: betSlot.stake, consoleSlot: slot })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to place bet");
+
+      setBalance(data.newBalance);
+      const update = (current: IBetSlot): IBetSlot => ({
+        ...current,
+        isLocked: true,
+        hasCashedOut: false,
+        betId: data.bet._id,
+        cashedOutMultiplier: null,
+        winAmount: null
+      });
+      if (slot === 1) setConsole1(update);
+      else setConsole2(update);
+    } catch (error) {
+      setGameError(error instanceof Error ? error.message : "Unable to place bet");
+    }
+  }, [console1, console2]);
+
+  const cashoutInProgress = useRef(new Set<string>());
   const cashOut1 = useCallback(async () => {
-    if (phase !== "IN_FLIGHT" || console1.hasCashedOut || !console1.isLocked) return;
-    const payout = parseFloat((console1.stake * multiplier).toFixed(2));
-    setBalance(b => b + payout);
-    setConsole1(c => ({ ...c, hasCashedOut: true, cashedOutMultiplier: multiplier, winAmount: payout }));
-    fetch("/api/game/cashout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stakeAmount: console1.stake, multiplier })
-    }).catch(() => {});
+    const betId = console1.betId;
+    if (phase !== "IN_FLIGHT" || console1.hasCashedOut || !console1.isLocked || !betId || cashoutInProgress.current.has(betId)) return;
+    cashoutInProgress.current.add(betId);
+    setGameError("");
+    try {
+      const response = await fetch("/api/game/cashout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ betId, multiplier })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to cash out");
+      setBalance(data.newBalance);
+      setConsole1(c => ({ ...c, hasCashedOut: true, cashedOutMultiplier: data.multiplier, winAmount: data.payout }));
+    } catch (error) {
+      setGameError(error instanceof Error ? error.message : "Unable to cash out");
+    } finally {
+      cashoutInProgress.current.delete(betId);
+    }
   }, [phase, console1, multiplier]);
 
   const cashOut2 = useCallback(async () => {
-    if (phase !== "IN_FLIGHT" || console2.hasCashedOut || !console2.isLocked) return;
-    const payout = parseFloat((console2.stake * multiplier).toFixed(2));
-    setBalance(b => b + payout);
-    setConsole2(c => ({ ...c, hasCashedOut: true, cashedOutMultiplier: multiplier, winAmount: payout }));
-    fetch("/api/game/cashout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stakeAmount: console2.stake, multiplier })
-    }).catch(() => {});
+    const betId = console2.betId;
+    if (phase !== "IN_FLIGHT" || console2.hasCashedOut || !console2.isLocked || !betId || cashoutInProgress.current.has(betId)) return;
+    cashoutInProgress.current.add(betId);
+    setGameError("");
+    try {
+      const response = await fetch("/api/game/cashout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ betId, multiplier })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to cash out");
+      setBalance(data.newBalance);
+      setConsole2(c => ({ ...c, hasCashedOut: true, cashedOutMultiplier: data.multiplier, winAmount: data.payout }));
+    } catch (error) {
+      setGameError(error instanceof Error ? error.message : "Unable to cash out");
+    } finally {
+      cashoutInProgress.current.delete(betId);
+    }
   }, [phase, console2, multiplier]);
 
   const currentGameRef = useRef({ console1, console2, cashOut1, cashOut2 });
   currentGameRef.current = { console1, console2, cashOut1, cashOut2 };
 
   useEffect(() => {
-    if (phase !== "IN_FLIGHT") return;
+    if (phase !== "IN_FLIGHT" || serverStartedAt === null) return;
 
-    const start = Date.now();
-    const timer = window.setInterval(() => {
-      const elapsed = (Date.now() - start) / 1000;
-      const m = parseFloat((1.00 * Math.pow(Math.E, 0.07 * elapsed)).toFixed(2));
+    let animationFrame = 0;
+    const animate = () => {
+      const elapsedSeconds = Math.max(0, (Date.now() - serverStartedAt) / 1_000);
+      const currentMultiplier = Math.floor(Math.exp(0.07 * elapsedSeconds) * 100) / 100;
+      setMultiplier(currentMultiplier);
+
       const { console1: currentConsole1, console2: currentConsole2, cashOut1: currentCashOut1, cashOut2: currentCashOut2 } = currentGameRef.current;
+      if (currentConsole1.isLocked && !currentConsole1.hasCashedOut && currentConsole1.autoCashout && currentMultiplier >= currentConsole1.autoMultiplier) void currentCashOut1();
+      if (currentConsole2.isLocked && !currentConsole2.hasCashedOut && currentConsole2.autoCashout && currentMultiplier >= currentConsole2.autoMultiplier) void currentCashOut2();
 
-      if (currentConsole1.isLocked && !currentConsole1.hasCashedOut && currentConsole1.autoCashout && m >= currentConsole1.autoMultiplier) currentCashOut1();
-      if (currentConsole2.isLocked && !currentConsole2.hasCashedOut && currentConsole2.autoCashout && m >= currentConsole2.autoMultiplier) currentCashOut2();
-
-      if (m >= crashTarget) {
-        setMultiplier(crashTarget);
-        setPhase("CRASHED");
-        setHistory(h => [crashTarget, ...h.slice(0, 15)]);
-        window.clearInterval(timer);
-      } else {
-        setMultiplier(m);
-      }
-    }, 50);
-
-    return () => window.clearInterval(timer);
-  }, [phase, crashTarget]);
-
-  useEffect(() => {
-    if (phase !== "CRASHED") return;
-
-    const resetTimer = window.setTimeout(() => {
-      setMultiplier(1.0);
-      setCrashTarget(parseFloat((1.15 + Math.random() * 6.5).toFixed(2)));
-      setConsole1(c => ({ ...c, isLocked: false, betId: null, hasCashedOut: false, cashedOutMultiplier: null, winAmount: null }));
-      setConsole2(c => ({ ...c, isLocked: false, betId: null, hasCashedOut: false, cashedOutMultiplier: null, winAmount: null }));
-      setPhase("IN_FLIGHT");
-    }, 3200);
-
-    return () => window.clearTimeout(resetTimer);
-  }, [phase]);
+      animationFrame = window.requestAnimationFrame(animate);
+    };
+    animationFrame = window.requestAnimationFrame(animate);
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [phase, serverStartedAt]);
 
   return (
     <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col">
@@ -122,7 +229,7 @@ export default function GamePage() {
 
         {/* Left Section: Flight Radar & Consoles (8 Cols on laptop) */}
         <section className="lg:col-span-8 flex flex-col gap-4">
-          <FlightDeck multiplier={multiplier} phase={phase} />
+          <FlightDeck multiplier={multiplier} phase={phase} countdownSeconds={countdown} />
 
           {/* Dual Betting Consoles */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -154,10 +261,9 @@ export default function GamePage() {
                 ) : (
                   <button
                     onClick={() => {
-                      if (balance < console1.stake) return alert("Please deposit via M-PESA or Airtel first");
-                      setBalance(b => b - console1.stake);
-                      setConsole1(c => ({ ...c, isLocked: true }));
+                      void placeBet(1);
                     }}
+                    disabled={console1.isLocked || phase !== "PREPARING"}
                     className="flex-1 bg-[#E51E3D] hover:bg-[#FF2B4D] text-white font-black rounded-lg text-xs flex flex-col items-center justify-center p-2 active:scale-95 transition-all"
                   >
                     <span>BET</span>
@@ -198,10 +304,9 @@ export default function GamePage() {
                 ) : (
                   <button
                     onClick={() => {
-                      if (balance < console2.stake) return alert("Please deposit via M-PESA or Airtel first");
-                      setBalance(b => b - console2.stake);
-                      setConsole2(c => ({ ...c, isLocked: true }));
+                      void placeBet(2);
                     }}
+                    disabled={console2.isLocked || phase !== "PREPARING"}
                     className="flex-1 bg-[#E51E3D] hover:bg-[#FF2B4D] text-white font-black rounded-lg text-xs flex flex-col items-center justify-center p-2 active:scale-95 transition-all"
                   >
                     <span>BET</span>
@@ -217,39 +322,27 @@ export default function GamePage() {
         <section className="lg:col-span-4 bg-[#10131A] border border-[#282C35] rounded-2xl p-4 flex flex-col">
           <div className="flex justify-between items-center pb-3 border-b border-[#282C35] text-xs font-mono">
             <span className="flex items-center gap-1.5 text-zinc-300">
-              <Users size={14} className="text-[#00E575]" /> Active Orbiters (412)
+              <Users size={14} className="text-[#00E575]" /> Active Orbiters ({liveBets.length})
             </span>
-            <span className="text-[#00E575] font-bold">Round #982</span>
+            <span className="text-[#00E575] font-bold">Round #{roundNumber} · refreshes every 3s</span>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 py-3 font-mono text-xs">
-            <div className="flex justify-between items-center p-2 bg-[#0B0E14] rounded-lg">
-              <div>
-                <span className="font-bold text-zinc-200">Kamau_KE</span>
-                <span className="text-[10px] text-zinc-500 block">M-PESA VIP</span>
+            {liveBets.map(bet => (
+              <div key={bet._id} className="flex justify-between items-center gap-2 p-2 bg-[#0B0E14] rounded-lg">
+                <span className="min-w-0 truncate font-bold text-zinc-200">{bet.username}</span>
+                <span className="shrink-0 text-zinc-400">${bet.stakeAmount.toFixed(2)}</span>
+                <span className={`shrink-0 font-bold ${bet.status === "CASHED_OUT" ? "text-[#00E575]" : bet.status === "LOST" ? "text-red-400" : "text-amber-400"}`}>
+                  {bet.status === "CASHED_OUT" ? `${bet.cashedOutMultiplier?.toFixed(2)}x +$${bet.payoutAmount.toFixed(2)}` : bet.status === "LOST" ? "Crashed" : "Flying..."}
+                </span>
               </div>
-              <span className="text-zinc-400">$40.00</span>
-              <span className="text-[#00E575] font-bold">3.12x +$124.80</span>
-            </div>
-            <div className="flex justify-between items-center p-2 bg-[#0B0E14] rounded-lg">
-              <div>
-                <span className="font-bold text-zinc-200">AirtelFlyer_UG</span>
-                <span className="text-[10px] text-zinc-500 block">Airtel Tier 2</span>
-              </div>
-              <span className="text-zinc-400">$100.00</span>
-              <span className="text-amber-400 font-bold">Flying...</span>
-            </div>
-            <div className="flex justify-between items-center p-2 bg-[#0B0E14] rounded-lg">
-              <div>
-                <span className="font-bold text-zinc-200">ValkyrieAce</span>
-                <span className="text-[10px] text-zinc-500 block">Paystack</span>
-              </div>
-              <span className="text-zinc-400">$25.00</span>
-              <span className="text-[#00E575] font-bold">4.82x +$120.50</span>
-            </div>
+            ))}
+            {!liveBets.length && <p className="p-2 text-zinc-500">No recent bets yet.</p>}
+            {feedError && <p role="alert" className="p-2 text-red-400">{feedError}</p>}
           </div>
         </section>
       </main>
+      {gameError && <p role="alert" className="mx-auto mb-20 max-w-3xl rounded-lg border border-red-900 bg-red-950/70 p-3 text-sm text-red-200">{gameError}</p>}
     </div>
   );
 }
