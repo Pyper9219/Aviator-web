@@ -10,12 +10,15 @@ export async function GET(req: NextRequest) {
 
   try {
     await connectToDatabase();
-    const bets = await Bet.find({})
-      .sort({ createdAt: -1 })
-      .limit(30)
-      .select("username stakeAmount status cashedOutMultiplier payoutAmount createdAt")
-      .lean();
-    return NextResponse.json({ bets });
+    const [bets, activeCount] = await Promise.all([
+      Bet.find({})
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .select("username stakeAmount status cashedOutMultiplier payoutAmount createdAt")
+        .lean(),
+      Bet.countDocuments({ status: "ACTIVE" })
+    ]);
+    return NextResponse.json({ bets, activeCount });
   } catch (error) {
     console.error("Failed to load live bets", error);
     return NextResponse.json({ error: "Unable to load live bets" }, { status: 503 });
