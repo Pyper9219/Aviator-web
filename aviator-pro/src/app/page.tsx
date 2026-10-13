@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Header from "@/components/Header";
+import DemoOrbiters from "@/components/DemoOrbiters";
 import FlightDeck from "@/components/FlightDeck";
 import { GamePhase, IBetSlot } from "@/types";
 import { Minus, Plus, Zap, Trophy, Users, ShieldCheck } from "lucide-react";
@@ -374,69 +375,72 @@ export default function GamePage() {
           </div>
         </section>
 
-        <section
-          aria-label="Live pilot activity"
-          className="xl:col-span-4 h-[560px] bg-[#10131A] border border-[#282C35] rounded-2xl p-4 flex flex-col"
-        >
-          <div className="flex justify-between items-center pb-3 border-b border-[#282C35] text-xs font-mono">
-            <span className="flex items-center gap-1.5 text-zinc-300">
-              <Users size={14} className="text-[#00E575]" /> Active Orbiters ({activeOrbiterCount})
-            </span>
-            <span className="flex items-center gap-1.5 text-[#00E575] font-bold">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#00E575] animate-pulse" />
-              LIVE · 1S
-            </span>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-3 font-mono text-xs">
-            <div className="space-y-2">
-              {liveBets.map((bet) => {
-                const isCashedOut = bet.status === "CASHED_OUT";
-                const isLost = bet.status === "LOST";
-                const profit = bet.payoutAmount - bet.stakeAmount;
-
-                return (
-                  <div
-                    key={bet._id}
-                    className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-white/[0.04] bg-[#0B0E14] p-2.5"
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span
-                        className={`h-2 w-2 shrink-0 rounded-full ${
-                          isCashedOut
-                            ? "bg-emerald-400"
-                            : isLost
-                              ? "bg-red-500"
-                              : "bg-amber-400 animate-pulse"
-                        }`}
-                      />
-                      <span className="truncate font-bold text-zinc-200">{bet.username}</span>
-                    </div>
-                    <span className="shrink-0 text-zinc-400">${bet.stakeAmount.toFixed(2)}</span>
-                    <span
-                      className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-bold ${
-                        isCashedOut
-                          ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-                          : isLost
-                            ? "border border-red-400/20 bg-red-400/10 text-red-300"
-                            : "border border-amber-400/20 bg-amber-400/10 text-amber-300"
-                      }`}
-                      title={isCashedOut ? `Total payout: $${bet.payoutAmount.toFixed(2)}` : undefined}
-                    >
-                      {isCashedOut
-                        ? `${bet.cashedOutMultiplier?.toFixed(2)}x · ${profit >= 0 ? "+" : ""}$${profit.toFixed(2)}`
-                        : isLost
-                          ? "FLEW AWAY"
-                          : "IN FLIGHT"}
-                    </span>
-                  </div>
-                );
-              })}
+        <div className="xl:col-span-4 flex flex-col gap-4">
+          <section
+            aria-label="Real-money live pilot activity"
+            className="flex h-[560px] flex-col rounded-2xl border border-[#282C35] bg-[#10131A] p-4"
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-[#282C35] pb-3 font-mono text-xs">
+              <span className="flex items-center gap-1.5 text-zinc-300">
+                <Users size={14} className="text-[#00E575]" /> Active Orbiters ({activeOrbiterCount})
+              </span>
+              <span className="flex items-center gap-1.5 font-bold text-[#00E575]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#00E575] animate-pulse" />
+                REAL BETS · LIVE
+              </span>
             </div>
-            {!liveBets.length && <p className="p-2 text-zinc-500">No recent bets yet.</p>}
-            {feedError && <p role="alert" className="p-2 text-red-400">{feedError}</p>}
-          </div>
-        </section>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-3 font-mono text-xs">
+              <div className="space-y-2">
+                {liveBets.map((bet) => {
+                  const isCashedOut = bet.status === "CASHED_OUT";
+                  const isLost = bet.status === "LOST";
+                  const profit = bet.payoutAmount - bet.stakeAmount;
+
+                  return (
+                    <div
+                      key={bet._id}
+                      className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-white/[0.04] bg-[#0B0E14] p-2.5"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${
+                            isCashedOut
+                              ? "bg-emerald-400"
+                              : isLost
+                                ? "bg-red-500"
+                                : "bg-amber-400 animate-pulse"
+                          }`}
+                        />
+                        <span className="truncate font-bold text-zinc-200">{bet.username}</span>
+                      </div>
+                      <span className="shrink-0 text-zinc-400">${bet.stakeAmount.toFixed(2)}</span>
+                      <span
+                        className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-bold ${
+                          isCashedOut
+                            ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                            : isLost
+                              ? "border border-red-400/20 bg-red-400/10 text-red-300"
+                              : "border border-amber-400/20 bg-amber-400/10 text-amber-300"
+                        }`}
+                        title={isCashedOut ? `Total payout: $${bet.payoutAmount.toFixed(2)}` : undefined}
+                      >
+                        {isCashedOut
+                          ? `${bet.cashedOutMultiplier?.toFixed(2)}x · ${profit >= 0 ? "+" : ""}$${profit.toFixed(2)}`
+                          : isLost
+                            ? "FLEW AWAY"
+                            : "IN FLIGHT"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {!liveBets.length && <p className="p-2 text-zinc-500">No real bets yet.</p>}
+              {feedError && <p role="alert" className="p-2 text-red-400">{feedError}</p>}
+            </div>
+          </section>
+          <DemoOrbiters />
+        </div>
       </main>
       {gameError && <p role="alert" className="mx-auto mb-20 max-w-3xl rounded-lg border border-red-900 bg-red-950/70 p-3 text-sm text-red-200">{gameError}</p>}
     </div>
