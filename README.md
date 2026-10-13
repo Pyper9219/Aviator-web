@@ -10,6 +10,6 @@ Before enabling withdrawal review in production, configure these server-side env
 - `WITHDRAWAL_KES_PER_USD`: configured KES per USD conversion rate.
 - `WITHDRAWAL_UGX_PER_USD`: configured UGX per USD conversion rate.
 
-The withdrawal flow uses MongoDB transactions, so the database must support transactions (for example, MongoDB Atlas or a replica set). Do not put these values in client-side environment variables.
+The dashboard displays USD-accounted balances in KES using `WITHDRAWAL_KES_PER_USD`; betting, settlement, and stored balances remain denominated in USD. The withdrawal flow uses MongoDB transactions, so the database must support transactions (for example, MongoDB Atlas or a replica set). Do not put these values in client-side environment variables.
 
 Deposits are deliberately disabled until a verified payment provider and its confirmation callbacks are implemented. New accounts start with zero balance, and only server-settled game payouts increase withdrawable funds. Do not treat a client-side payment prompt or receipt as proof of payment.

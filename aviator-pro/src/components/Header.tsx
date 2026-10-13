@@ -1,12 +1,35 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, ShieldCheck, LogOut, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { formatKESBalance } from "@/lib/currency";
 
 export default function Header({ balance, username }: { balance: number; username?: string }) {
   const router = useRouter();
+  const [kesPerUsd, setKesPerUsd] = useState<number | null>(null);
+  const formattedBalance = formatKESBalance(balance, kesPerUsd);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/me")
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Unable to load KES exchange rate");
+        const rate = data.rates?.KES;
+        if (active) {
+          setKesPerUsd(typeof rate === "number" && Number.isFinite(rate) && rate > 0 ? rate : null);
+        }
+      })
+      .catch((error) => {
+        console.error("Unable to load balance display currency", error);
+        if (active) setKesPerUsd(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -37,9 +60,14 @@ export default function Header({ balance, username }: { balance: number; usernam
         )}
 
         <div className="flex items-center gap-1.5 px-3 py-1 bg-[#0B0E14] border border-[#282C35] rounded-full">
-          <span className="text-[10px] font-mono text-zinc-400">BAL</span>
-          <span className="text-xs font-mono font-bold text-[#00E575]">
-            ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <span className="text-[10px] font-mono text-zinc-400">BAL · KES</span>
+          <span
+            className="text-xs font-mono font-bold text-[#00E575]"
+            title={kesPerUsd === null ? "KES display unavailable: configure WITHDRAWAL_KES_PER_USD" : undefined}
+          >
+            {formattedBalance === null
+              ? "KSh unavailable"
+              : formattedBalance}
           </span>
           <Link
             href="/cashier"

@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Banknote, Clock3, RefreshCcw, Wallet } from "lucide-react";
 import type { WithdrawalCurrency, WithdrawalMethod, WithdrawalRates } from "@/lib/withdrawals";
+import { formatKESBalance } from "@/lib/currency";
 
 interface WithdrawalRecord {
   _id: string;
@@ -55,6 +56,8 @@ export default function WithdrawPage() {
   }, []);
 
   const numericAmount = Number(amountUSD);
+  const formattedWithdrawableBalance = formatKESBalance(withdrawableBalance, rates.KES);
+  const formattedLockedBalance = formatKESBalance(lockedBalance, rates.KES);
   const estimatedLocal = rates[currency] && Number.isFinite(numericAmount)
     ? Math.round(numericAmount * rates[currency]!)
     : null;
@@ -105,11 +108,21 @@ export default function WithdrawPage() {
         <div className="mb-6 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-[#282C35] bg-[#10131A] p-4">
             <div className="flex items-center gap-2 text-xs font-mono text-zinc-400"><Wallet size={15} /> AVAILABLE WITHDRAWABLE CASH</div>
-            <div className="mt-2 text-2xl font-bold text-[#00E575]">${withdrawableBalance.toFixed(2)}</div>
+            <div
+              className="mt-2 text-2xl font-bold text-[#00E575]"
+              title={formattedWithdrawableBalance === null ? "KES display unavailable: configure WITHDRAWAL_KES_PER_USD" : undefined}
+            >
+              {formattedWithdrawableBalance ?? "KSh unavailable"}
+            </div>
           </div>
           <div className="rounded-xl border border-[#282C35] bg-[#10131A] p-4">
             <div className="flex items-center gap-2 text-xs font-mono text-zinc-400"><Clock3 size={15} /> LOCKED IN WITHDRAWALS</div>
-            <div className="mt-2 text-2xl font-bold">${lockedBalance.toFixed(2)}</div>
+            <div
+              className="mt-2 text-2xl font-bold"
+              title={formattedLockedBalance === null ? "KES display unavailable: configure WITHDRAWAL_KES_PER_USD" : undefined}
+            >
+              {formattedLockedBalance ?? "KSh unavailable"}
+            </div>
           </div>
         </div>
 

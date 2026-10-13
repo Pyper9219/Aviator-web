@@ -3,18 +3,23 @@
 import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import { CreditCard, CheckCircle2 } from "lucide-react";
+import { formatKESBalance } from "@/lib/currency";
 
 export default function CashierPage() {
   const [balance, setBalance] = useState(0);
+  const [kesPerUsd, setKesPerUsd] = useState<number | null>(null);
   const [method, setMethod] = useState<"MPESA" | "AIRTEL" | "CARD">("MPESA");
   const [phone, setPhone] = useState("07");
   const [amountUSD, setAmountUSD] = useState(25);
+  const formattedBalance = formatKESBalance(balance, kesPerUsd);
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then(res => res.json())
       .then(data => {
         if (data.user) setBalance(data.user.balanceUSD);
+        const rate = data.rates?.KES;
+        setKesPerUsd(typeof rate === "number" && Number.isFinite(rate) && rate > 0 ? rate : null);
       });
   }, []);
 
@@ -30,7 +35,14 @@ export default function CashierPage() {
           </div>
           <div className="text-right">
             <span className="text-[10px] font-mono text-zinc-400 block">CURRENT VAULT</span>
-            <span className="text-xl font-mono font-bold text-[#00E575]">${balance.toFixed(2)} USD</span>
+            <span
+              className="text-xl font-mono font-bold text-[#00E575]"
+              title={kesPerUsd === null ? "KES display unavailable: configure WITHDRAWAL_KES_PER_USD" : undefined}
+            >
+              {formattedBalance === null
+                ? "KSh unavailable"
+                : formattedBalance}
+            </span>
           </div>
         </div>
 
