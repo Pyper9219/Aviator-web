@@ -13,6 +13,7 @@ interface LiveBet {
   status: "ACTIVE" | "CASHED_OUT" | "LOST";
   cashedOutMultiplier?: number;
   payoutAmount: number;
+  createdAt: string;
 }
 
 export default function GamePage() {
@@ -38,6 +39,8 @@ export default function GamePage() {
 
   const observedRound = useRef(0);
   const settledRound = useRef(0);
+  const feedCursor = useRef<{ createdAt: string; id: string } | null>(null);
+  const feedRequestInProgress = useRef(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -90,17 +93,63 @@ export default function GamePage() {
   useEffect(() => {
     let active = true;
     const refreshBets = async () => {
+      if (feedRequestInProgress.current) return;
+      feedRequestInProgress.current = true;
+
       try {
-        const response = await fetch("/api/game/bets", { cache: "no-store" });
-        const data = await response.json();
+        const cursor = feedCursor.current;
+        const feedUrl = new URL("/api/game/bets", window.location.origin);
+        if (cursor) {
+          feedUrl.searchParams.set("afterCreatedAt", cursor.createdAt);
+          feedUrl.searchParams.set("afterId", cursor.id);
+        }
+
+        const response = await fetch(`${feedUrl.pathname}${feedUrl.search}`, { cache: "no-store" });
+        const data: {
+          bets: LiveBet[];
+          newBets: LiveBet[];
+          activeCount: number;
+          error?: string;
+        } = await response.json();
         if (!response.ok) throw new Error(data.error || "Unable to refresh live bets");
         if (active) {
-          setLiveBets(data.bets);
+          const receivedBets = [...data.bets, ...data.newBets];
+          const receivedById = new Map(receivedBets.map((bet) => [bet._id, bet]));
+
+          setLiveBets((previous) => {
+            const previousIds = new Set(previous.map((bet) => bet._id));
+            const newlyReceived = Array.from(receivedById.values())
+              .filter((bet) => !previousIds.has(bet._id))
+              .sort(
+                (a, b) =>
+                  Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
+                  b._id.localeCompare(a._id)
+              );
+            const updatedHistory = previous.map((bet) => receivedById.get(bet._id) ?? bet);
+
+            return [...newlyReceived, ...updatedHistory];
+          });
+
+          const lastNewBet = data.newBets.at(-1);
+          if (lastNewBet) {
+            feedCursor.current = { createdAt: lastNewBet.createdAt, id: lastNewBet._id };
+          } else if (!cursor) {
+            const oldestInitialBet = data.bets.at(-1);
+            if (oldestInitialBet) {
+              feedCursor.current = {
+                createdAt: oldestInitialBet.createdAt,
+                id: oldestInitialBet._id
+              };
+            }
+          }
+
           setActiveOrbiterCount(data.activeCount);
           setFeedError("");
         }
       } catch (error) {
         if (active) setFeedError(error instanceof Error ? error.message : "Unable to refresh live bets");
+      } finally {
+        feedRequestInProgress.current = false;
       }
     };
 
@@ -327,7 +376,7 @@ export default function GamePage() {
 
         <section
           aria-label="Live pilot activity"
-          className="xl:col-span-4 h-[360px] sm:h-[420px] xl:h-[calc(100vh-13rem)] xl:min-h-[420px] xl:max-h-[720px] bg-[#10131A] border border-[#282C35] rounded-2xl p-4 flex flex-col"
+          className="xl:col-span-4 h-[560px] bg-[#10131A] border border-[#282C35] rounded-2xl p-4 flex flex-col"
         >
           <div className="flex justify-between items-center pb-3 border-b border-[#282C35] text-xs font-mono">
             <span className="flex items-center gap-1.5 text-zinc-300">

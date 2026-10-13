@@ -29,6 +29,7 @@ const BetSchema = new Schema<IBetDoc>(
 );
 
 BetSchema.index({ createdAt: -1 });
+BetSchema.index({ createdAt: 1, _id: 1 });
 BetSchema.index({ roundNumber: 1, userId: 1, consoleSlot: 1 }, { unique: true });
 
 export const Bet: Model<IBetDoc> = mongoose.models.Bet || mongoose.model<IBetDoc>("Bet", BetSchema);
