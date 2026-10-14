@@ -44,10 +44,10 @@ export default function BetsPage() {
         </div>
       </div>
 
-      <div className="flex border-b border-[#282C35] bg-[#0B0E14] px-4 pt-2 gap-2">
+      <div className="flex flex-wrap border-b border-[#282C35] bg-[#0B0E14] px-2 sm:px-4 pt-2 gap-1 sm:gap-2">
         <button
           onClick={() => setActiveTab('all')}
-          className={`py-2 px-3 text-xs font-bold border-b-2 transition-colors ${
+          className={`py-2 px-2 sm:px-3 text-[11px] sm:text-xs font-bold border-b-2 transition-colors ${
             activeTab === 'all' ? 'border-[#00E575] text-[#00E575]' : 'border-transparent text-zinc-400 hover:text-white'
           }`}
         >
@@ -55,7 +55,7 @@ export default function BetsPage() {
         </button>
         <button
           onClick={() => setActiveTab('my')}
-          className={`py-2 px-3 text-xs font-bold border-b-2 transition-colors ${
+          className={`py-2 px-2 sm:px-3 text-[11px] sm:text-xs font-bold border-b-2 transition-colors ${
             activeTab === 'my' ? 'border-[#00E575] text-[#00E575]' : 'border-transparent text-zinc-400 hover:text-white'
           }`}
         >
@@ -63,7 +63,7 @@ export default function BetsPage() {
         </button>
         <button
           onClick={() => setActiveTab('top')}
-          className={`py-2 px-3 text-xs font-bold border-b-2 transition-colors ${
+          className={`py-2 px-2 sm:px-3 text-[11px] sm:text-xs font-bold border-b-2 transition-colors ${
             activeTab === 'top' ? 'border-[#00E575] text-[#00E575]' : 'border-transparent text-zinc-400 hover:text-white'
           }`}
         >
@@ -71,8 +71,8 @@ export default function BetsPage() {
         </button>
       </div>
 
-      <div className="flex-1 p-3 overflow-y-auto space-y-2">
-        <div className="grid grid-cols-4 text-[10px] font-mono text-zinc-500 px-2 py-1">
+      <div className="mx-auto w-full max-w-4xl flex-1 p-3 overflow-y-auto space-y-2">
+        <div className="hidden sm:grid sm:grid-cols-4 text-[10px] font-mono text-zinc-500 px-2 py-1">
           <span>PILOT</span>
           <span className="text-center">BET</span>
           <span className="text-center">MULT</span>
@@ -82,14 +82,15 @@ export default function BetsPage() {
         {allBets.map((row, i) => (
           <div
             key={i}
-            className="grid grid-cols-4 items-center bg-[#10131A] border border-[#282C35] rounded-lg px-3 py-2 text-xs font-mono"
+            className="grid grid-cols-2 gap-y-2 sm:grid-cols-4 sm:gap-y-0 items-center bg-[#10131A] border border-[#282C35] rounded-lg px-3 py-2 text-xs font-mono"
           >
-            <div>
+            <div className="col-span-2 min-w-0 sm:col-span-1">
               <div className="font-bold text-zinc-200 truncate">{row.pilot}</div>
               <div className="text-[10px] text-zinc-500">{row.vip}</div>
             </div>
-            <div className="text-center text-zinc-300">${row.bet.toFixed(2)}</div>
-            <div className="text-center">
+            <div className="text-zinc-300 sm:text-center"><span className="text-zinc-500 sm:hidden">BET </span>${row.bet.toFixed(2)}</div>
+            <div className="sm:text-center">
+              <span className="text-zinc-500 sm:hidden">MULT </span>
               {row.lost ? (
                 <span className="text-red-500 font-bold">Lost</span>
               ) : row.cashed ? (
@@ -99,6 +100,7 @@ export default function BetsPage() {
               )}
             </div>
             <div className="text-right font-bold text-[#00E575]">
+              <span className="text-zinc-500 font-normal sm:hidden">PAYOUT </span>
               {row.lost ? '$0.00' : `+$${row.payout.toFixed(2)}`}
             </div>
           </div>

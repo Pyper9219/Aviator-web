@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Navigation from '@/components/Navigation';
+import ResponsiveNavigation from '@/components/ResponsiveNavigation';
 
 export const metadata: Metadata = {
   title: 'Aviator AeroCrash - Next Generation Crash Game',
@@ -14,11 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#0B0E14] text-white min-h-screen pb-20">
-        <main className="max-w-md mx-auto min-h-screen bg-[#0B0E14] border-x border-[#282C35]/50 flex flex-col">
+      <body className="bg-[#0B0E14] text-white min-h-screen pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-16">
+        <div className="app-shell mx-auto min-h-screen w-full max-w-screen-2xl bg-[#0B0E14] flex flex-col">
           {children}
-        </main>
-        <Navigation />
+          <ResponsiveNavigation />
+        </div>
       </body>
     </html>
   );

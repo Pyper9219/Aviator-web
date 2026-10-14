@@ -42,7 +42,7 @@ export default function CashierPage() {
     <div className="flex-1 flex flex-col">
       <Header balance={4850.50} />
 
-      <div className="p-4 flex-1 flex flex-col gap-4">
+      <div className="mx-auto w-full max-w-4xl p-3 sm:p-4 flex-1 flex flex-col gap-4">
         <div className="flex items-center justify-between bg-[#10131A] p-3 rounded-xl border border-[#282C35]">
           <div>
             <span className="text-[10px] font-mono text-zinc-400 block">TERMINAL NODE #04</span>
