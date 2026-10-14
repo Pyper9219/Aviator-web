@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useRef } from "react";
 import { GamePhase } from "@/types";
 
@@ -8,7 +8,10 @@ interface FlightDeckProps {
   countdownSeconds: number;
 }
 
-export default function FlightDeck({ multiplier, phase, countdownSeconds }: FlightDeckProps) {
+export default function FlightDeck({
+  const audioRef = useRef(null);
+  useEffect(() => { audioRef.current = new Audio('/aviator-engine.mp3'); audioRef.current.loop = true; audioRef.current.volume = 0.4; }, []);
+  useEffect(() => { if(!audioRef.current) return; if(phase === 'IN_FLIGHT') audioRef.current.play().catch(()=>{}); else { audioRef.current.pause(); audioRef.current.currentTime = 0; } }, [phase]); multiplier, phase, countdownSeconds }: FlightDeckProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Initialize audio
@@ -85,3 +88,4 @@ export default function FlightDeck({ multiplier, phase, countdownSeconds }: Flig
     </div>
   );
 }
+
