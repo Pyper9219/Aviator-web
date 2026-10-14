@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST() {
-  cookies().delete("aviator_session");
-  return NextResponse.json({ success: true });
+export async function POST(req: NextRequest) {
+  const response = NextResponse.json({ success: true, message: "Logged out successfully" });
+  response.cookies.set("aviator_session", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+  return response;
 }

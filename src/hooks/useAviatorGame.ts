@@ -3,17 +3,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { GamePhase, IBetSlot, IOrbiterPlayer } from "@/types";
 import { soundEngine } from "@/lib/audio/soundEngine";
 
-const KENYAN_PILOTS = [
-  "Kamau_KE", "Kipchoge_99", "NairobiAce", "Pilot_Wanjiku", "M-PesaGlider",
-  "SafariAce", "Onyango_Gold", "JumaCash", "EastAir_Pro", "VictorFlyer",
-  "Amina_Mombasa", "Kibet_Speed", "Mwangi_Trader", "NaivashaAce", "Turbo_Kenya",
-  "Sharon_Flyer", "Mutua_Express", "Otieno_Pilot", "EldoretStriker", "NakuruJet"
-];
+const KENYAN_PILOTS = ["Kamau_KE", "Kipchoge_99", "NairobiAce", "Pilot_Wanjiku", "M-PesaGlider", "SafariAce", "Onyango_Gold", "JumaCash", "EastAir_Pro", "VictorFlyer", "Amina_Mombasa", "Kibet_Speed", "Mwangi_Trader", "NaivashaAce", "Turbo_Kenya", "Sharon_Flyer", "Mutua_Express", "Otieno_Pilot", "EldoretStriker", "NakuruJet"];
 const STAKE_PRESETS_KSH = [50, 100, 200, 500, 1000, 2500, 5000];
 
 export function useAviatorGame() {
   const [balance, setBalance] = useState<number>(2500.00);
   const [username, setUsername] = useState<string>("Pilot");
+  const [role, setRole] = useState<"PILOT" | "ADMIN">("PILOT");
   const [multiplier, setMultiplier] = useState<number>(1.00);
   const [phase, setPhase] = useState<GamePhase>("PREPARING");
   const [countdown, setCountdown] = useState<number>(5);
@@ -28,12 +24,8 @@ export function useAviatorGame() {
     { id: "init_4", username: "M-PesaGlider", stake: 100, mult: null, profit: 0, status: "IN_FLIGHT", timestamp: Date.now() - 1400 },
   ]);
 
-  const [console1, setConsole1] = useState<IBetSlot>({
-    stake: 200, autoCashout: false, autoMultiplier: 2.00, isLocked: false, betId: null, hasCashedOut: false, cashedOutMultiplier: null, winAmount: null,
-  });
-  const [console2, setConsole2] = useState<IBetSlot>({
-    stake: 100, autoCashout: true, autoMultiplier: 12338.75, isLocked: true, betId: "b2_locked", hasCashedOut: true, cashedOutMultiplier: 12338.75, winAmount: 1233875,
-  });
+  const [console1, setConsole1] = useState<IBetSlot>({ stake: 200, autoCashout: false, autoMultiplier: 2.00, isLocked: false, betId: null, hasCashedOut: false, cashedOutMultiplier: null, winAmount: null });
+  const [console2, setConsole2] = useState<IBetSlot>({ stake: 100, autoCashout: true, autoMultiplier: 12338.75, isLocked: true, betId: "b2_locked", hasCashedOut: true, cashedOutMultiplier: 12338.75, winAmount: 1233875 });
 
   const toggleSound = useCallback(() => {
     if (soundEngine) {
@@ -49,6 +41,7 @@ export function useAviatorGame() {
       if (data.user) {
         setBalance(data.user.balanceKSH);
         setUsername(data.user.username);
+        setRole(data.user.role || "PILOT");
       }
     } catch (e) {}
   }, []);
@@ -149,5 +142,5 @@ export function useAviatorGame() {
     return () => clearTimeout(timeoutId);
   }, [phase, multiplier]);
 
-  return { balance, username, phase, multiplier, countdown, roundNumber, history, liveBets, console1, setConsole1, console2, setConsole2, cashOutConsole1, placeBet1, isMuted, toggleSound };
+  return { balance, username, role, phase, multiplier, countdown, roundNumber, history, liveBets, console1, setConsole1, console2, setConsole2, cashOutConsole1, placeBet1, isMuted, toggleSound };
 }
