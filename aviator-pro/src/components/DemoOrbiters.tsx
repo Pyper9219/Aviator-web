@@ -78,8 +78,8 @@ export default function DemoOrbiters() {
       aria-label="Demo-only simulated pilot activity"
       className="flex h-[360px] flex-col rounded-2xl border border-amber-400/25 bg-[#17140e] p-4"
     >
-      <div className="flex items-center justify-between gap-3 border-b border-amber-400/15 pb-3">
-        <div className="flex items-center gap-2 text-xs font-mono text-amber-100">
+      <div className="flex flex-col items-start gap-2 border-b border-amber-400/15 pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-[11px] font-mono text-amber-100 sm:text-xs">
           <Users size={14} className="text-amber-300" />
           <span>DEMO ORBITERS ({activeCount} IN FLIGHT)</span>
         </div>
@@ -101,7 +101,7 @@ export default function DemoOrbiters() {
             return (
               <div
                 key={orbiter.id}
-                className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-amber-100/[0.06] bg-[#100f0c] p-2.5"
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1 rounded-lg border border-amber-100/[0.06] bg-[#100f0c] p-2.5 sm:flex sm:items-center sm:justify-between"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <span
@@ -117,7 +117,7 @@ export default function DemoOrbiters() {
                 </div>
                 <span className="shrink-0 text-zinc-400">{orbiter.credits} cr</span>
                 <span
-                  className={`shrink-0 rounded-md border px-2 py-1 text-[10px] font-bold ${
+                  className={`col-span-2 max-w-full justify-self-end rounded-md border px-2 py-1 text-right text-[10px] font-bold sm:col-span-1 sm:shrink-0 sm:justify-self-auto sm:whitespace-nowrap ${
                     cashedOut
                       ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
                       : flewAway

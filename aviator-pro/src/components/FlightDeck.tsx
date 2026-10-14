@@ -173,15 +173,15 @@ export default function FlightDeck({
         )}
       </svg>
 
-      <div className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-lg border border-white/15 bg-[#111318]/85 px-2.5 py-1.5 font-mono text-[10px] text-zinc-200 backdrop-blur sm:left-4 sm:top-4 sm:text-xs">
-        <span className={`h-2 w-2 rounded-full ${isCrashed ? "bg-red-500" : isPreparing ? "bg-amber-400 animate-pulse" : "bg-emerald-400 animate-pulse"}`} />
-        <span>{isCrashed ? "FLEW AWAY" : isPreparing ? "PREPARING" : "IN FLIGHT"}</span>
-        <span className="text-zinc-500">·</span>
-        <span className="text-zinc-400">ROUND #{roundNumber}</span>
+      <div className="absolute left-2 top-2 z-10 flex max-w-[62%] items-center gap-1.5 rounded-lg border border-white/15 bg-[#111318]/90 px-2 py-1.5 font-mono text-[9px] text-zinc-200 backdrop-blur sm:left-4 sm:top-4 sm:gap-2 sm:px-2.5 sm:text-xs">
+        <span className={`h-2 w-2 shrink-0 rounded-full ${isCrashed ? "bg-red-500" : isPreparing ? "bg-amber-400 animate-pulse" : "bg-emerald-400 animate-pulse"}`} />
+        <span className="truncate">{isCrashed ? "FLEW AWAY" : isPreparing ? "PREPARING" : "IN FLIGHT"}</span>
+        <span className="hidden shrink-0 text-zinc-500 sm:inline">·</span>
+        <span className="hidden shrink-0 text-zinc-400 sm:inline">ROUND #{roundNumber}</span>
       </div>
 
-      <div className="absolute right-3 top-3 z-10 rounded-lg border border-white/15 bg-[#111318]/85 px-2.5 py-1.5 font-mono text-[10px] font-bold tracking-wide text-zinc-300 backdrop-blur sm:right-4 sm:top-4 sm:text-xs">
-        {isPreparing ? "BETS OPEN" : isCrashed ? "ROUND ENDED" : "LIVE FLIGHT"}
+      <div className="absolute right-2 top-2 z-10 max-w-[34%] truncate rounded-lg border border-white/15 bg-[#111318]/90 px-2 py-1.5 text-center font-mono text-[9px] font-bold tracking-wide text-zinc-300 backdrop-blur sm:right-4 sm:top-4 sm:max-w-none sm:px-2.5 sm:text-xs">
+        {isPreparing ? "BETS OPEN" : isCrashed ? "ROUND ENDED" : "LIVE"}
       </div>
 
       <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center pt-4 text-center">

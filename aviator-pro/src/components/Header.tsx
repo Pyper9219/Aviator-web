@@ -38,31 +38,31 @@ export default function Header({ balance, username }: { balance: number; usernam
   };
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-[#10131A] border-b border-[#282C35]">
-      <Link href="/" className="flex items-center gap-2">
-        <div className="w-7 h-7 bg-[#E51E3D] rounded-sm flex items-center justify-center font-bold text-white text-xs">
+    <header className="sticky top-0 z-50 flex items-center justify-between gap-2 border-b border-[#282C35] bg-[#10131A] px-2.5 py-2.5 sm:px-4 sm:py-3">
+      <Link href="/" className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-[#E51E3D] text-xs font-bold text-white">
           ▲
         </div>
-        <div className="font-extrabold tracking-wider text-base text-white">
+        <div className="shrink-0 text-sm font-extrabold tracking-wide text-white sm:text-base sm:tracking-wider">
           AERO<span className="text-[#E51E3D]">CRASH</span>
         </div>
-        <div className="hidden sm:flex items-center gap-1 ml-2 text-[10px] text-zinc-400 font-mono">
+        <div className="ml-1 hidden items-center gap-1 text-[10px] font-mono text-zinc-400 sm:flex sm:ml-2">
           <span className="w-1.5 h-1.5 rounded-full bg-[#00E575] animate-ping" />
           3,412 PILOTS IN ORBIT
         </div>
       </Link>
 
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         {username && (
-          <span className="hidden md:inline text-xs font-mono text-zinc-400">
+          <span className="hidden max-w-36 truncate text-xs font-mono text-zinc-400 lg:inline">
             Pilot: <strong className="text-white">{username}</strong>
           </span>
         )}
 
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-[#0B0E14] border border-[#282C35] rounded-full">
-          <span className="text-[10px] font-mono text-zinc-400">BAL · KES</span>
+        <div className="flex min-w-0 items-center gap-1 rounded-full border border-[#282C35] bg-[#0B0E14] px-2 py-1 sm:gap-1.5 sm:px-3">
+          <span className="hidden text-[10px] font-mono text-zinc-400 sm:inline">BAL · KES</span>
           <span
-            className="text-xs font-mono font-bold text-[#00E575]"
+            className="max-w-[34vw] truncate text-[11px] font-mono font-bold text-[#00E575] sm:max-w-none sm:text-xs"
             title={kesPerUsd === null ? "KES display unavailable: configure WITHDRAWAL_KES_PER_USD" : undefined}
           >
             {formattedBalance === null
@@ -71,8 +71,9 @@ export default function Header({ balance, username }: { balance: number; usernam
           </span>
           <Link
             href="/cashier"
-            className="w-5 h-5 rounded-full bg-[#00E575] text-[#0B0E14] flex items-center justify-center hover:opacity-90 font-bold ml-1"
+            className="ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#00E575] font-bold text-[#0B0E14] hover:opacity-90 sm:ml-1"
             title="Deposit M-PESA / Airtel / Card"
+            aria-label="Deposit funds"
           >
             <Plus size={13} strokeWidth={3} />
           </Link>
@@ -81,7 +82,8 @@ export default function Header({ balance, username }: { balance: number; usernam
         <button
           onClick={handleLogout}
           title="Sign Out"
-          className="p-1.5 text-zinc-400 hover:text-white rounded bg-[#191C22]"
+          aria-label="Sign out"
+          className="shrink-0 rounded bg-[#191C22] p-1.5 text-zinc-400 hover:text-white"
         >
           <LogOut size={16} />
         </button>

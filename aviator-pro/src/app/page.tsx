@@ -400,7 +400,7 @@ export default function GamePage() {
                   return (
                     <div
                       key={bet._id}
-                      className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-white/[0.04] bg-[#0B0E14] p-2.5"
+                      className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1 rounded-lg border border-white/[0.04] bg-[#0B0E14] p-2.5 sm:flex sm:items-center sm:justify-between"
                     >
                       <div className="flex min-w-0 items-center gap-2">
                         <span
@@ -416,7 +416,7 @@ export default function GamePage() {
                       </div>
                       <span className="shrink-0 text-zinc-400">${bet.stakeAmount.toFixed(2)}</span>
                       <span
-                        className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-bold ${
+                        className={`col-span-2 max-w-full justify-self-end rounded-md px-2 py-1 text-right text-[10px] font-bold sm:col-span-1 sm:shrink-0 sm:justify-self-auto sm:whitespace-nowrap ${
                           isCashedOut
                             ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
                             : isLost
