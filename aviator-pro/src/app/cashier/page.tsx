@@ -5,6 +5,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import { CheckCircle2, Clock3, Wallet } from "lucide-react";
 import { formatKESBalance } from "@/lib/currency";
+import { DEFAULT_KES_PER_USD } from "@/lib/withdrawals";
 
 type DepositStatus = "pending" | "completed" | "failed";
 
@@ -195,6 +196,12 @@ export default function CashierPage() {
               <span className="font-mono text-lg font-bold text-white">
                 {estimatedCreditUSD === null ? "Rate unavailable" : `$${estimatedCreditUSD.toFixed(2)} USD`}
               </span>
+              {kesPerUsd !== null && (
+                <span className="mt-1 block text-[11px] text-zinc-500">
+                  KSh {kesPerUsd.toLocaleString("en-KE", { maximumFractionDigits: 2 })} / USD
+                  {kesPerUsd === DEFAULT_KES_PER_USD ? " · standard fallback rate" : ""}
+                </span>
+              )}
             </div>
             <span className="text-right text-xs text-zinc-500">Based on configured KES/USD rate</span>
           </div>

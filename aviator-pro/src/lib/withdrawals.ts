@@ -6,15 +6,17 @@ export interface WithdrawalRates {
   UGX: number | null;
 }
 
+export const DEFAULT_KES_PER_USD = 130;
+
 export function getWithdrawalRates(): WithdrawalRates {
-  const parseRate = (value: string | undefined): number | null => {
+  const parseRate = (value: string | undefined, fallback: number | null = null): number | null => {
     if (!value) return null;
     const rate = Number(value);
-    return Number.isFinite(rate) && rate > 0 ? rate : null;
+    return Number.isFinite(rate) && rate > 0 ? rate : fallback;
   };
 
   return {
-    KES: parseRate(process.env.WITHDRAWAL_KES_PER_USD),
+    KES: parseRate(process.env.WITHDRAWAL_KES_PER_USD, DEFAULT_KES_PER_USD),
     UGX: parseRate(process.env.WITHDRAWAL_UGX_PER_USD)
   };
 }

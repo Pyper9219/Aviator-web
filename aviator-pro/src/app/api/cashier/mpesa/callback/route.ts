@@ -53,7 +53,9 @@ export async function POST(req: NextRequest) {
     const metadata = Array.isArray(callback.CallbackMetadata?.Item)
       ? (callback.CallbackMetadata.Item as StkCallbackItem[])
       : [];
-    const callbackAmount = Number(getCallbackValue(metadata, "Amount"));
+    const rawAmount = getCallbackValue(metadata, "Amount");
+    const parsedAmount = typeof rawAmount === "number" ? rawAmount : Number(rawAmount);
+    const callbackAmount = Number.isFinite(parsedAmount) ? parsedAmount : -1;
     const callbackPhone = normalizeKenyanPhoneNumber(
       String(getCallbackValue(metadata, "PhoneNumber") ?? "")
     );

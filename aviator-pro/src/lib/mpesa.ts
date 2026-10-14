@@ -1,3 +1,5 @@
+import { DEFAULT_KES_PER_USD } from "@/lib/withdrawals";
+
 type MpesaEnvironment = "sandbox" | "production";
 
 interface MpesaCredentials {
@@ -210,7 +212,7 @@ export function normalizeKenyanPhoneNumber(phone: unknown): string | null {
 export function getDepositKESPerUsd(): number | null {
   const value =
     process.env.DEPOSIT_KES_PER_USD || process.env.WITHDRAWAL_KES_PER_USD;
-  if (!value) return null;
+  if (!value) return DEFAULT_KES_PER_USD;
   const rate = Number(value);
-  return Number.isFinite(rate) && rate > 0 ? rate : null;
+  return Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_KES_PER_USD;
 }
