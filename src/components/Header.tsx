@@ -1,5 +1,5 @@
-﻿"use client";
-import React, { useState, useEffect } from "react";
+"use client";
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, LogOut, Volume2, VolumeX } from "lucide-react";
@@ -9,30 +9,9 @@ interface HeaderProps {
   username?: string;
 }
 
-export default function Header({
-const [isMuted, setIsMuted] = React.useState(false);
-  const toggleMute = () => { setIsMuted(!isMuted); const audios = document.querySelectorAll('audio'); audios.forEach(a => a.muted = !isMuted); }; balance, username }: HeaderProps) {
+export default function Header({ balance, username }: HeaderProps) {
   const router = useRouter();
   const [isMuted, setIsMuted] = React.useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-
-  // Sync mute state with localStorage so it persists across pages
-  useEffect(() => {
-    const savedMute = localStorage.getItem("aviator_muted");
-    if (savedMute) setIsMuted(savedMute === "true");
-  }, []);
-
-  const toggleMute = () => {
-    const newMuteState = !isMuted;
-    setIsMuted(newMuteState);
-    localStorage.setItem("aviator_muted", String(newMuteState));
-    
-    // Find all audio elements on the page and mute/unmute them
-    const audios = document.querySelectorAll("audio");
-    audios.forEach(audio => {
-      audio.muted = newMuteState;
-    });
-  };
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -53,47 +32,29 @@ const [isMuted, setIsMuted] = React.useState(false);
             KENYA LIVE
           </span>
         </div>
-        
         <div className="flex items-center gap-2">
-          {/* Balance & Deposit */}
           <div className="flex items-center gap-2 px-3 py-1 bg-[#10131A] border border-[#282C35] rounded-lg font-mono">
             <span className="text-[10px] text-zinc-400 font-bold">KSH</span>
             <span className="text-sm font-bold text-[#00E575]">
               {balance.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-            <Link
-              href="/cashier"
-              className="w-5 h-5 rounded bg-[#00E575] text-[#0B0E14] flex items-center justify-center font-bold text-xs hover:opacity-90 transition-transform active:scale-95"
-              title="Deposit Funds"
-            >
+            <Link href="/cashier" className="w-5 h-5 rounded bg-[#00E575] text-[#0B0E14] flex items-center justify-center font-bold text-xs hover:opacity-90 transition-transform active:scale-95" title="Deposit Funds via M-PESA">
               <Plus size={13} strokeWidth={3} />
             </Link>
           </div>
-          
-          {/* Withdraw Link */}
-          <Link
-            href="/withdraw"
-            className="px-2.5 py-1 bg-[#191C22] hover:bg-[#282C35] border border-[#282C35] rounded-lg font-mono text-xs text-zinc-300 font-bold transition-colors"
-          >
+          <Link href="/withdraw" className="px-2.5 py-1 bg-[#191C22] hover:bg-[#282C35] border border-[#282C35] rounded-lg font-mono text-xs text-zinc-300 font-bold transition-colors">
             Withdraw
           </Link>
-
-          {/* MUTE TOGGLE BUTTON */}
+          
+          {/* MUTE BUTTON */}
           <button
-            onClick={toggleMute}
+            onClick={() => setIsMuted(m => !m)}
             className="p-2 bg-[#191C22] hover:bg-[#282C35] border border-[#282C35] rounded-lg text-zinc-300 hover:text-white transition-colors"
             title={isMuted ? "Unmute Sound" : "Mute Sound"}
           >
             {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
 
-                    <button onClick={toggleMute} className="p-2 bg-[#191C22] hover:bg-[#282C35] border border-[#282C35] rounded-lg text-zinc-300 transition-colors" title="Toggle Sound">
-            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-          </button>
-
-                    <button onClick={() => { setIsMuted(m => !m); document.querySelectorAll('audio').forEach(a => a.muted = !isMuted); }} className="p-2 bg-[#191C22] hover:bg-[#282C35] border border-[#282C35] rounded-lg text-zinc-300 transition-colors" title="Toggle Sound">
-            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-          </button>
           {/* LOGOUT BUTTON */}
           <button
             onClick={handleLogout}
@@ -105,7 +66,6 @@ const [isMuted, setIsMuted] = React.useState(false);
           </button>
         </div>
       </div>
-      
       {/* Repeating Red Aeroplane Silhouette Ribbon */}
       <div className="flex items-center justify-around py-1.5 px-2 bg-[#06080C] border-t border-[#191C22] overflow-hidden opacity-90">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -123,5 +83,3 @@ const [isMuted, setIsMuted] = React.useState(false);
     </header>
   );
 }
-
-
