@@ -91,6 +91,19 @@ function getBaseUrl(environment: MpesaEnvironment): string {
     : "https://sandbox.safaricom.co.ke";
 }
 
+async function readMpesaResponse<T>(response: Response, operation: string): Promise<T> {
+  const body = await response.text();
+  if (!body.trim()) {
+    throw new Error(`Safaricom returned an empty response during ${operation}. Please try again later.`);
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    throw new Error(`Safaricom returned an invalid response during ${operation}. Please try again later.`);
+  }
+}
+
 async function getAccessToken(credentials: MpesaCredentials): Promise<string> {
   const authorization = Buffer.from(
     `${credentials.consumerKey}:${credentials.consumerSecret}`
@@ -103,7 +116,10 @@ async function getAccessToken(credentials: MpesaCredentials): Promise<string> {
       signal: AbortSignal.timeout(15_000),
     }
   );
-  const data = (await response.json()) as { access_token?: string; error_description?: string };
+  const data = await readMpesaResponse<{ access_token?: string; error_description?: string }>(
+    response,
+    "Daraja authentication"
+  );
 
   if (!response.ok || !data.access_token) {
     throw new Error(data.error_description || "Unable to authenticate with M-Pesa");
@@ -143,7 +159,7 @@ async function authorizedPost<T>(
     cache: "no-store",
     signal: AbortSignal.timeout(20_000),
   });
-  const data = (await response.json()) as T & MpesaApiError;
+  const data = await readMpesaResponse<T & MpesaApiError>(response, "the M-Pesa request");
 
   if (!response.ok) {
     throw new Error(
