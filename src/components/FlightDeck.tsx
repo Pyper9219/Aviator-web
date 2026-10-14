@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useEffect, useRef } from "react";
 import { GamePhase } from "@/types";
 
@@ -8,17 +8,14 @@ interface FlightDeckProps {
   countdownSeconds: number;
 }
 
-export default function FlightDeck({
-  const audioRef = useRef(null);
-  useEffect(() => { audioRef.current = new Audio('/aviator-engine.mp3'); audioRef.current.loop = true; audioRef.current.volume = 0.4; }, []);
-  useEffect(() => { if(!audioRef.current) return; if(phase === 'IN_FLIGHT') audioRef.current.play().catch(()=>{}); else { audioRef.current.pause(); audioRef.current.currentTime = 0; } }, [phase]); multiplier, phase, countdownSeconds }: FlightDeckProps) {
+export default function FlightDeck({ multiplier, phase, countdownSeconds }: FlightDeckProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Initialize audio
   useEffect(() => {
     audioRef.current = new Audio("/aviator-engine.mp3");
     audioRef.current.loop = true;
-    audioRef.current.volume = 0.4; // Keep it at 40% volume so it's not too loud
+    audioRef.current.volume = 0.4;
   }, []);
 
   // Play/Pause based on game phase
@@ -26,10 +23,10 @@ export default function FlightDeck({
     if (!audioRef.current) return;
     
     if (phase === "IN_FLIGHT") {
-      audioRef.current.play().catch((e) => console.log("Audio play blocked by browser:", e));
+      audioRef.current.play().catch((e) => console.log("Audio play blocked:", e));
     } else {
       audioRef.current.pause();
-      audioRef.current.currentTime = 0; // Reset to start for next round
+      audioRef.current.currentTime = 0;
     }
   }, [phase]);
 
@@ -38,7 +35,7 @@ export default function FlightDeck({
       {/* Background Grid */}
       <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "linear-gradient(#282C35 1px, transparent 1px), linear-gradient(90deg, #282C35 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
       
-      {/* Flight Path Curve (Visual only) */}
+      {/* Flight Path Curve */}
       {phase === "IN_FLIGHT" && (
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           <path d="M 0 100 Q 50 100 100 0" fill="none" stroke="#E51E3D" strokeWidth="0.5" strokeDasharray="2,2" />
@@ -88,4 +85,3 @@ export default function FlightDeck({
     </div>
   );
 }
-
