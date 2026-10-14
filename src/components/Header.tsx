@@ -1,8 +1,8 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, LogOut } from "lucide-react";
+import { Plus, LogOut, Volume2, VolumeX } from "lucide-react";
 
 interface HeaderProps {
   balance: number;
@@ -11,6 +11,25 @@ interface HeaderProps {
 
 export default function Header({ balance, username }: HeaderProps) {
   const router = useRouter();
+  const [isMuted, setIsMuted] = useState(false);
+
+  // Sync mute state with localStorage so it persists across pages
+  useEffect(() => {
+    const savedMute = localStorage.getItem("aviator_muted");
+    if (savedMute) setIsMuted(savedMute === "true");
+  }, []);
+
+  const toggleMute = () => {
+    const newMuteState = !isMuted;
+    setIsMuted(newMuteState);
+    localStorage.setItem("aviator_muted", String(newMuteState));
+    
+    // Find all audio elements on the page and mute/unmute them
+    const audios = document.querySelectorAll("audio");
+    audios.forEach(audio => {
+      audio.muted = newMuteState;
+    });
+  };
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -55,6 +74,15 @@ export default function Header({ balance, username }: HeaderProps) {
           >
             Withdraw
           </Link>
+
+          {/* MUTE TOGGLE BUTTON */}
+          <button
+            onClick={toggleMute}
+            className="p-2 bg-[#191C22] hover:bg-[#282C35] border border-[#282C35] rounded-lg text-zinc-300 hover:text-white transition-colors"
+            title={isMuted ? "Unmute Sound" : "Mute Sound"}
+          >
+            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
 
           {/* LOGOUT BUTTON */}
           <button
