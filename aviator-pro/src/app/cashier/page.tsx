@@ -1,178 +1,252 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import Header from "@/components/Header";
-import { CreditCard, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Clock3, Wallet } from "lucide-react";
 import { formatKESBalance } from "@/lib/currency";
+
+type DepositStatus = "pending" | "completed" | "failed";
+
+interface DepositRecord {
+  reference: string;
+  status: DepositStatus;
+  amountLocal: number;
+  amountUSD: number;
+  currency: string;
+  createdAt: string;
+  resultDescription?: string;
+  mpesaReceiptNumber?: string;
+}
 
 export default function CashierPage() {
   const [balance, setBalance] = useState(0);
   const [kesPerUsd, setKesPerUsd] = useState<number | null>(null);
-  const [method, setMethod] = useState<"MPESA" | "AIRTEL" | "CARD">("MPESA");
-  const [phone, setPhone] = useState("07");
-  const [amountUSD, setAmountUSD] = useState(25);
+  const [phone, setPhone] = useState("");
+  const [amountKES, setAmountKES] = useState("500");
+  const [deposit, setDeposit] = useState<DepositRecord | null>(null);
+  const [recentDeposits, setRecentDeposits] = useState<DepositRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const polling = useRef(false);
+  const amount = Number(amountKES);
   const formattedBalance = formatKESBalance(balance, kesPerUsd);
+  const estimatedCreditUSD =
+    kesPerUsd && Number.isSafeInteger(amount) && amount > 0
+      ? Math.round((amount / kesPerUsd) * 100) / 100
+      : null;
+
+  const loadAccountAndHistory = useCallback(async () => {
+    const [accountResponse, historyResponse] = await Promise.all([
+      fetch("/api/auth/me", { cache: "no-store" }),
+      fetch("/api/cashier/deposit", { cache: "no-store" }),
+    ]);
+    const [accountData, historyData] = await Promise.all([
+      accountResponse.json(),
+      historyResponse.json(),
+    ]);
+    if (!accountResponse.ok) throw new Error(accountData.error || "Unable to load account balance");
+    if (!historyResponse.ok) throw new Error(historyData.error || "Unable to load deposit history");
+    if (accountData.user) setBalance(accountData.user.balanceUSD);
+    const rate = accountData.depositKESPerUSD ?? accountData.rates?.KES;
+    setKesPerUsd(typeof rate === "number" && Number.isFinite(rate) && rate > 0 ? rate : null);
+    setRecentDeposits(historyData.transactions);
+  }, []);
+
+  const refreshDeposit = useCallback(async (reference: string) => {
+    if (polling.current) return;
+    polling.current = true;
+    try {
+      const response = await fetch(
+        `/api/cashier/deposit?reference=${encodeURIComponent(reference)}`,
+        { cache: "no-store" }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to refresh M-Pesa payment status");
+      const updatedDeposit = data.transaction as DepositRecord;
+      setDeposit(updatedDeposit);
+      setRecentDeposits((current) =>
+        current.map((item) => item.reference === updatedDeposit.reference ? updatedDeposit : item)
+      );
+      if (updatedDeposit.status === "completed") {
+        const accountResponse = await fetch("/api/auth/me", { cache: "no-store" });
+        const accountData = await accountResponse.json();
+        if (!accountResponse.ok) throw new Error(accountData.error || "Unable to refresh account balance");
+        if (accountData.user) setBalance(accountData.user.balanceUSD);
+        setNotice("M-Pesa payment confirmed. Your wallet has been credited.");
+      } else if (updatedDeposit.status === "failed") {
+        setError(updatedDeposit.resultDescription || "M-Pesa payment was not completed.");
+      }
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : "Unable to refresh payment status");
+    } finally {
+      polling.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then(res => res.json())
-      .then(data => {
-        if (data.user) setBalance(data.user.balanceUSD);
-        const rate = data.rates?.KES;
-        setKesPerUsd(typeof rate === "number" && Number.isFinite(rate) && rate > 0 ? rate : null);
+    loadAccountAndHistory()
+      .catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : "Unable to load cashier"))
+      .finally(() => setLoading(false));
+  }, [loadAccountAndHistory]);
+
+  useEffect(() => {
+    if (deposit?.status !== "pending") return;
+    const timer = window.setInterval(() => void refreshDeposit(deposit.reference), 5_000);
+    return () => window.clearInterval(timer);
+  }, [deposit?.reference, deposit?.status, refreshDeposit]);
+
+  async function requestDeposit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/cashier/deposit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountKES: amount, phone }),
       });
-  }, []);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to start M-Pesa payment");
+      const newDeposit: DepositRecord = {
+        reference: data.reference,
+        status: "pending",
+        amountLocal: amount,
+        amountUSD: estimatedCreditUSD ?? 0,
+        currency: "KES",
+        createdAt: new Date().toISOString(),
+        resultDescription: data.message,
+      };
+      setDeposit(newDeposit);
+      setRecentDeposits((current) => [newDeposit, ...current]);
+      setNotice(data.message || "Check your phone and approve the M-Pesa prompt.");
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Unable to start M-Pesa payment");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col">
       <Header balance={balance} />
 
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="flex items-center justify-between bg-[#10131A] border border-[#282C35] rounded-2xl p-4 sm:p-6 mb-6">
+        <div className="flex items-center justify-between gap-4 bg-[#10131A] border border-[#282C35] rounded-2xl p-4 sm:p-6 mb-6">
           <div>
-            <span className="text-[10px] font-mono text-zinc-400 block">EAST AFRICA & GLOBAL CASHIER</span>
-            <h1 className="text-xl sm:text-2xl font-black">Deposit Flight Funds</h1>
+            <span className="text-[10px] font-mono text-zinc-400 block">SAFARICOM KENYA</span>
+            <h1 className="text-xl sm:text-2xl font-black">M-Pesa wallet</h1>
           </div>
           <div className="text-right">
             <span className="text-[10px] font-mono text-zinc-400 block">CURRENT VAULT</span>
             <span
               className="text-xl font-mono font-bold text-[#00E575]"
-              title={kesPerUsd === null ? "KES display unavailable: configure WITHDRAWAL_KES_PER_USD" : undefined}
+              title={formattedBalance === null ? "Configure WITHDRAWAL_KES_PER_USD to display your balance in KES" : undefined}
             >
-              {formattedBalance === null
-                ? "KSh unavailable"
-                : formattedBalance}
+              {loading ? "Loading…" : formattedBalance ?? "KSh unavailable"}
             </span>
           </div>
         </div>
 
-        <div role="status" className="mb-6 rounded-xl border border-amber-700 bg-amber-950/50 p-4 text-sm text-amber-200">
-          Deposits are unavailable until a verified payment provider is configured. No balance is credited before the provider confirms payment.
+        <div className="mb-6 rounded-xl border border-amber-700 bg-amber-950/50 p-4 text-sm text-amber-200">
+          Deposits are credited only after Safaricom confirms the STK Push. M-Pesa withdrawals are reviewed by an admin and paid manually; requesting a withdrawal does not send an automatic payout.
         </div>
 
-        {/* Method Picker */}
-        <div className="mb-6">
-          <label className="text-xs font-mono text-zinc-400 block mb-2">SELECT PAYMENT RAIL</label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* M-PESA */}
-            <button
-              disabled
-              onClick={() => setMethod("MPESA")}
-              className={`p-4 rounded-xl border flex items-center justify-between text-left transition-all ${
-                method === "MPESA" ? "bg-[#191C22] border-[#00A859] ring-2 ring-[#00A859]/30" : "bg-[#10131A] border-[#282C35]"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#00A859] text-white font-black flex items-center justify-center text-xs">
-                  M
-                </div>
-                <div>
-                  <div className="font-bold text-white text-sm">M-PESA</div>
-                  <div className="text-[10px] text-zinc-400">Safaricom Instant STK</div>
-                </div>
-              </div>
-              {method === "MPESA" && <CheckCircle2 size={18} className="text-[#00A859]" />}
-            </button>
+        <form onSubmit={requestDeposit} className="space-y-5 rounded-2xl border border-[#282C35] bg-[#10131A] p-5">
+          <h2 className="flex items-center gap-2 font-bold">
+            <Wallet size={18} className="text-[#00E575]" /> Deposit with M-Pesa
+          </h2>
 
-            {/* Airtel Money */}
-            <button
-              disabled
-              onClick={() => setMethod("AIRTEL")}
-              className={`p-4 rounded-xl border flex items-center justify-between text-left transition-all ${
-                method === "AIRTEL" ? "bg-[#191C22] border-[#E31837] ring-2 ring-[#E31837]/30" : "bg-[#10131A] border-[#282C35]"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#E31837] text-white font-black flex items-center justify-center text-xs">
-                  A
-                </div>
-                <div>
-                  <div className="font-bold text-white text-sm">Airtel Money</div>
-                  <div className="text-[10px] text-zinc-400">Kenya, Uganda, Tanzania</div>
-                </div>
-              </div>
-              {method === "AIRTEL" && <CheckCircle2 size={18} className="text-[#E31837]" />}
-            </button>
+          <label className="block text-xs font-mono text-zinc-300">
+            M-PESA PHONE NUMBER
+            <input
+              required
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="0712345678 or 254712345678"
+              className="mt-1.5 w-full rounded-xl border border-[#282C35] bg-[#0B0E14] px-4 py-3 text-sm text-white focus:border-[#00E575] focus:outline-none"
+            />
+          </label>
 
-            {/* Paystack Card */}
-            <button
-              disabled
-              onClick={() => setMethod("CARD")}
-              className={`p-4 rounded-xl border flex items-center justify-between text-left transition-all ${
-                method === "CARD" ? "bg-[#191C22] border-[#00E575] ring-2 ring-[#00E575]/30" : "bg-[#10131A] border-[#282C35]"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <CreditCard size={24} className="text-[#00E575]" />
-                <div>
-                  <div className="font-bold text-white text-sm">Debit / Credit Card</div>
-                  <div className="text-[10px] text-zinc-400">Visa / Mastercard / Paystack</div>
-                </div>
-              </div>
-              {method === "CARD" && <CheckCircle2 size={18} className="text-[#00E575]" />}
-            </button>
-          </div>
-        </div>
+          <label className="block text-xs font-mono text-zinc-300">
+            DEPOSIT AMOUNT (KES)
+            <input
+              required
+              type="number"
+              min="1"
+              max="250000"
+              step="1"
+              inputMode="numeric"
+              value={amountKES}
+              onChange={(event) => setAmountKES(event.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-[#282C35] bg-[#0B0E14] px-4 py-3 font-mono text-lg text-white focus:border-[#00E575] focus:outline-none"
+            />
+          </label>
 
-        {/* Form Inputs */}
-        <div className="bg-[#10131A] border border-[#282C35] rounded-2xl p-5 space-y-4">
-          {(method === "MPESA" || method === "AIRTEL") && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#282C35] bg-[#0B0E14] p-4">
             <div>
-              <label className="text-xs font-mono text-zinc-400 block mb-1">
-                {method} REGISTERED MOBILE PHONE NUMBER
-              </label>
-              <input
-                disabled
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="0712345678 or 254712345678"
-                className="w-full bg-[#0B0E14] border border-[#282C35] rounded-xl px-4 py-3 text-sm text-white font-mono focus:outline-none focus:border-[#00E575]"
-              />
-              <span className="text-[10px] text-zinc-500 mt-1 block">
-                Mobile-money payments are unavailable until a verified provider is configured.
+              <span className="block text-xs text-zinc-400">WALLET CREDIT ESTIMATE</span>
+              <span className="font-mono text-lg font-bold text-white">
+                {estimatedCreditUSD === null ? "Rate unavailable" : `$${estimatedCreditUSD.toFixed(2)} USD`}
               </span>
             </div>
+            <span className="text-right text-xs text-zinc-500">Based on configured KES/USD rate</span>
+          </div>
+
+          {error && <p role="alert" className="rounded-lg border border-red-900 bg-red-950/60 p-3 text-sm text-red-200">{error}</p>}
+          {notice && (
+            <p role="status" className="flex items-start gap-2 rounded-lg border border-emerald-900 bg-emerald-950/50 p-3 text-sm text-emerald-200">
+              {deposit?.status === "pending" ? <Clock3 size={16} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={16} className="mt-0.5 shrink-0" />}
+              {notice}
+            </p>
           )}
 
-          <div>
-            <label className="text-xs font-mono text-zinc-400 block mb-1.5">QUICK PRESETS</label>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-              {[10, 25, 50, 100, 250, 500].map((amt) => (
-                <button
-                  disabled
-                  key={amt}
-                  onClick={() => setAmountUSD(amt)}
-                  className={`py-2 px-3 rounded-xl border font-mono text-xs font-bold transition-all ${
-                    amountUSD === amt
-                      ? "bg-[#E51E3D] border-[#FF2B4D] text-white"
-                      : "bg-[#0B0E14] border-[#282C35] text-zinc-300 hover:bg-[#191C22]"
-                  }`}
-                >
-                  +${amt}
-                </button>
+          <button
+            type="submit"
+            disabled={submitting || loading || estimatedCreditUSD === null || estimatedCreditUSD < 0.01}
+            className="w-full rounded-xl bg-[#00A859] py-4 text-sm font-bold text-white transition hover:bg-[#00B963] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting ? "Sending STK prompt…" : "Send M-Pesa STK prompt"}
+          </button>
+        </form>
+
+        <section className="mt-6 rounded-2xl border border-[#282C35] bg-[#10131A] p-5">
+          <h2 className="mb-3 font-bold">Recent M-Pesa deposits</h2>
+          {recentDeposits.length ? (
+            <div className="space-y-2">
+              {recentDeposits.map((item) => (
+                <div key={item.reference} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#0B0E14] p-3 text-sm">
+                  <span className="font-mono text-zinc-200">KSh {item.amountLocal.toLocaleString("en-KE")}</span>
+                  <span className="text-zinc-400">${item.amountUSD.toFixed(2)} USD credit</span>
+                  <span className={`text-xs font-bold uppercase ${item.status === "completed" ? "text-emerald-300" : item.status === "failed" ? "text-red-300" : "text-amber-300"}`}>
+                    {item.status}
+                  </span>
+                  {item.status === "pending" && item.reference !== deposit?.reference && (
+                    <button
+                      type="button"
+                      onClick={() => void refreshDeposit(item.reference)}
+                      className="text-xs text-emerald-300 underline"
+                    >
+                      Check status
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <p className="text-sm text-zinc-500">No deposit requests yet.</p>
+          )}
+        </section>
 
-          <div className="flex justify-between items-center p-4 bg-[#0B0E14] border border-[#282C35] rounded-xl font-mono">
-            <div>
-              <span className="text-xs text-zinc-400 block">DEPOSIT SUM (USD)</span>
-              <span className="text-2xl font-black text-white">${amountUSD.toFixed(2)}</span>
-            </div>
-            <div className="text-right">
-              <span className="text-xs text-zinc-400 block">LOCAL PAYMENT COST</span>
-              <span className="text-sm font-bold text-zinc-400">Unavailable</span>
-            </div>
-          </div>
-
-          <button
-            disabled
-            className="w-full py-4 bg-[#E51E3D] disabled:opacity-50 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
-          >
-            Deposits unavailable
-          </button>
-        </div>
+        <p className="mt-5 text-center text-sm text-zinc-400">
+          Need to withdraw? <Link className="text-emerald-300 underline" href="/withdraw">Request an M-Pesa payout</Link>
+        </p>
       </main>
     </div>
   );

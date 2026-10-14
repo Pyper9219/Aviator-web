@@ -56,10 +56,18 @@ export default function WithdrawPage() {
   }, []);
 
   const numericAmount = Number(amountUSD);
+  const withdrawalAmountUSD = method === "MPESA"
+    ? rates.KES && Number.isFinite(numericAmount)
+      ? Math.round((numericAmount / rates.KES) * 100) / 100
+      : Number.NaN
+    : numericAmount;
+  const maxInputAmount = method === "MPESA" && rates.KES
+    ? Math.floor(withdrawableBalance * rates.KES)
+    : withdrawableBalance;
   const formattedWithdrawableBalance = formatKESBalance(withdrawableBalance, rates.KES);
   const formattedLockedBalance = formatKESBalance(lockedBalance, rates.KES);
-  const estimatedLocal = rates[currency] && Number.isFinite(numericAmount)
-    ? Math.round(numericAmount * rates[currency]!)
+  const estimatedLocal = rates[currency] && Number.isFinite(withdrawalAmountUSD)
+    ? Math.round(withdrawalAmountUSD * rates[currency]!)
     : null;
 
   async function submitWithdrawal(event: FormEvent<HTMLFormElement>) {
@@ -73,7 +81,7 @@ export default function WithdrawPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amountUSD: numericAmount,
+          amountUSD: withdrawalAmountUSD,
           currency,
           method,
           recipientName,
@@ -131,12 +139,12 @@ export default function WithdrawPage() {
             <h2 className="flex items-center gap-2 font-bold"><Banknote size={18} className="text-[#00E575]" /> New withdrawal</h2>
 
             <label className="block text-xs text-zinc-300">
-              Amount (USD)
+              Amount ({method === "MPESA" ? "KES" : "USD"})
               <input
                 type="number"
-                min="0.01"
-                max={withdrawableBalance}
-                step="0.01"
+                min={method === "MPESA" ? "1" : "0.01"}
+                max={maxInputAmount}
+                step={method === "MPESA" ? "1" : "0.01"}
                 required
                 value={amountUSD}
                 onChange={(event) => setAmountUSD(event.target.value)}
@@ -147,7 +155,18 @@ export default function WithdrawPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-xs text-zinc-300">
                 Payout method
-                <select value={method} onChange={(event) => setMethod(event.target.value as WithdrawalMethod)} className="mt-1 w-full rounded-lg border border-[#282C35] bg-[#0B0E14] px-3 py-2 text-sm">
+                <select
+                  value={method}
+                  onChange={(event) => {
+                    const nextMethod = event.target.value as WithdrawalMethod;
+                    setMethod(nextMethod);
+                    if (nextMethod === "MPESA") {
+                      setCurrency("KES");
+                      setAmountUSD("");
+                    }
+                  }}
+                  className="mt-1 w-full rounded-lg border border-[#282C35] bg-[#0B0E14] px-3 py-2 text-sm"
+                >
                   <option value="MPESA">M-PESA</option>
                   <option value="AIRTEL">Airtel Money</option>
                   <option value="BANK_WIRE">Bank wire</option>
@@ -155,12 +174,23 @@ export default function WithdrawPage() {
               </label>
               <label className="block text-xs text-zinc-300">
                 Payout currency
-                <select value={currency} onChange={(event) => setCurrency(event.target.value as WithdrawalCurrency)} className="mt-1 w-full rounded-lg border border-[#282C35] bg-[#0B0E14] px-3 py-2 text-sm">
+                <select
+                  value={currency}
+                  onChange={(event) => setCurrency(event.target.value as WithdrawalCurrency)}
+                  disabled={method === "MPESA"}
+                  className="mt-1 w-full rounded-lg border border-[#282C35] bg-[#0B0E14] px-3 py-2 text-sm disabled:opacity-60"
+                >
                   <option value="KES">KES</option>
-                  <option value="UGX">UGX</option>
+                  {method !== "MPESA" && <option value="UGX">UGX</option>}
                 </select>
               </label>
             </div>
+
+            {method === "MPESA" && (
+              <p className="text-xs text-zinc-400">
+                M-Pesa withdrawals are reserved on submission, then reviewed and paid manually by an admin.
+              </p>
+            )}
 
             <label className="block text-xs text-zinc-300">
               Recipient full name
@@ -187,13 +217,13 @@ export default function WithdrawPage() {
 
             <p className="rounded-lg bg-[#0B0E14] p-3 text-xs text-zinc-400">
               {rates[currency]
-                ? `Estimated payout: ${currency} ${estimatedLocal?.toLocaleString() ?? "—"} at ${rates[currency]} ${currency}/USD. The rate is saved with this request.`
+                ? `Estimated payout: ${currency} ${estimatedLocal?.toLocaleString() ?? "—"}${method === "MPESA" ? ` (about $${withdrawalAmountUSD.toFixed(2)} USD)` : ` at ${rates[currency]} ${currency}/USD`}. The rate is saved with this request.`
                 : `Payout estimate unavailable: ${currency} conversion rate has not been configured.`}
             </p>
 
             {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
             {notice && <p role="status" className="text-sm text-emerald-400">{notice}</p>}
-            <button disabled={submitting || loading || !rates[currency]} className="w-full rounded-lg bg-[#00E575] px-4 py-3 font-bold text-[#0B0E14] disabled:opacity-50">
+            <button disabled={submitting || loading || !rates[currency] || !Number.isFinite(withdrawalAmountUSD) || withdrawalAmountUSD < 0.01} className="w-full rounded-lg bg-[#00E575] px-4 py-3 font-bold text-[#0B0E14] disabled:opacity-50">
               {submitting ? "Submitting..." : "Request withdrawal"}
             </button>
           </form>
@@ -213,8 +243,8 @@ export default function WithdrawPage() {
                   <article key={item._id} className="rounded-lg border border-[#282C35] bg-[#0B0E14] p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="font-semibold">${item.amountUSD.toFixed(2)} · {item.method.replace("_", " ")}</div>
-                        <div className="mt-1 text-xs text-zinc-400">{item.recipientName} · {item.currency} {item.amountLocal.toLocaleString()}</div>
+                        <div className="font-semibold">{item.currency} {item.amountLocal.toLocaleString()} · {item.method.replace("_", " ")}</div>
+                        <div className="mt-1 text-xs text-zinc-400">{item.recipientName} · ${item.amountUSD.toFixed(2)} USD equivalent</div>
                         <div className="mt-1 text-[11px] text-zinc-500">{new Date(item.createdAt).toLocaleString()}</div>
                       </div>
                       <span className={`rounded px-2 py-1 text-[10px] font-bold ${item.status === "PENDING" ? "bg-amber-950 text-amber-300" : item.status === "APPROVED" ? "bg-emerald-950 text-emerald-300" : "bg-red-950 text-red-300"}`}>

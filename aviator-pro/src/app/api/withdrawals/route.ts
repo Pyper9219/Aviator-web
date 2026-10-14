@@ -57,6 +57,9 @@ export async function POST(req: NextRequest) {
     if (!isWithdrawalMethod(method) || !isWithdrawalCurrency(currency)) {
       return NextResponse.json({ error: "Choose a supported payout method and currency" }, { status: 400 });
     }
+    if (method === "MPESA" && currency !== "KES") {
+      return NextResponse.json({ error: "M-Pesa withdrawals are only available in KES" }, { status: 400 });
+    }
     if (recipientName.length < 2 || recipientName.length > 100) {
       return NextResponse.json({ error: "Enter the recipient's full name" }, { status: 400 });
     }

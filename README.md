@@ -12,4 +12,18 @@ Before enabling withdrawal review in production, configure these server-side env
 
 The dashboard displays USD-accounted balances in KES using `WITHDRAWAL_KES_PER_USD`; betting, settlement, and stored balances remain denominated in USD. The withdrawal flow uses MongoDB transactions, so the database must support transactions (for example, MongoDB Atlas or a replica set). Do not put these values in client-side environment variables.
 
-Deposits are deliberately disabled until a verified payment provider and its confirmation callbacks are implemented. New accounts start with zero balance, and only server-settled game payouts increase withdrawable funds. Do not treat a client-side payment prompt or receipt as proof of payment.
+New accounts start with zero balance. Deposits are only credited after verified server-side payment confirmation; do not treat a client-side payment prompt or receipt as proof of payment.
+
+## M-Pesa deposits and withdrawals
+
+The cashier supports Safaricom Daraja STK Push deposits. Keep these credentials server-side in Vercel; never use `NEXT_PUBLIC_` for secrets:
+
+- `MPESA_CONSUMER_KEY`
+- `MPESA_CONSUMER_SECRET`
+- `MPESA_SHORTCODE` (the Daraja sandbox test shortcode is `174379`)
+- `MPESA_PASSKEY`
+- `MPESA_ENVIRONMENT` (`sandbox` by default; use `production` only with live Daraja credentials)
+- `MPESA_CALLBACK_URL` (public HTTPS callback URL; if omitted, the app URL is used with `/api/cashier/mpesa/callback`)
+- `DEPOSIT_KES_PER_USD` or `WITHDRAWAL_KES_PER_USD` (KES credited per USD ledger unit)
+
+The callback verifies the STK transaction with Safaricom before crediting the wallet. The database must support MongoDB transactions. M-Pesa withdrawals are KES-only and remain admin-approved/manual payouts; STK Push credentials do not enable automatic B2C disbursements. Test with sandbox credentials before enabling live mode.
