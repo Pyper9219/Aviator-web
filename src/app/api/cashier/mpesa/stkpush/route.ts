@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const formattedPhone = formatKenyanPhone(phoneNumber);
+    
+    // Call Daraja STK Push with enhanced error catching
     const stkResponse = await initiateStkPush({
       phoneNumber: formattedPhone,
       amount,
@@ -35,6 +37,7 @@ export async function POST(req: NextRequest) {
       transactionDesc: "AviatorTopUp",
     });
 
+    // Save pending deposit in database
     await MpesaDeposit.create({
       userId: user._id.toString(),
       username: user.username,
@@ -52,6 +55,7 @@ export async function POST(req: NextRequest) {
       customerMessage: stkResponse.CustomerMessage,
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to initiate M-PESA deposit" }, { status: 500 });
+    console.error("STK Push error detail:", err);
+    return NextResponse.json({ error: err.message || "Failed to initiate M-PESA deposit. Please check Daraja credentials." }, { status: 500 });
   }
 }

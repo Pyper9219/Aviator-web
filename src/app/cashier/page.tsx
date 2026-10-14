@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
-import { Smartphone, CheckCircle2, AlertCircle, Loader2, ArrowRight, ShieldCheck, Zap } from "lucide-react";
+import { Smartphone, CheckCircle2, AlertCircle, Loader2, ArrowRight, ShieldCheck, Zap, Activity } from "lucide-react";
 
 export default function CashierPage() {
   const [balance, setBalance] = useState(0);
@@ -12,6 +12,10 @@ export default function CashierPage() {
   const [checkoutRequestId, setCheckoutRequestId] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  
+  // Daraja Diagnostic Test State
+  const [testingConn, setTestingConn] = useState(false);
+  const [connResult, setConnResult] = useState<any>(null);
 
   const fetchBalance = async () => {
     try {
@@ -24,6 +28,20 @@ export default function CashierPage() {
         }
       }
     } catch (e) {}
+  };
+
+  const testMpesaConnection = async () => {
+    setTestingConn(true);
+    setConnResult(null);
+    try {
+      const res = await fetch("/api/cashier/mpesa/test-token");
+      const data = await res.json();
+      setConnResult(data);
+    } catch (e: any) {
+      setConnResult({ status: "FAILED", error: e.message });
+    } finally {
+      setTestingConn(false);
+    }
   };
 
   useEffect(() => { fetchBalance(); }, []);
@@ -76,6 +94,7 @@ export default function CashierPage() {
     <div className="min-h-screen bg-[#07080B] text-white flex flex-col font-sans">
       <Header balance={balance} />
       <main className="flex-1 max-w-3xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        {/* Top Header Card */}
         <div className="bg-[#10131A] border border-[#282C35] rounded-2xl p-5 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -91,6 +110,41 @@ export default function CashierPage() {
           </div>
         </div>
 
+        {/* Diagnostic Test Bar */}
+        <div className="mb-4 flex items-center justify-between p-3 bg-[#10131A] border border-[#282C35] rounded-xl text-xs font-mono">
+          <div className="flex items-center gap-2 text-zinc-400">
+            <Activity size={15} className="text-[#00E575]" />
+            <span>M-PESA Daraja Status Check:</span>
+          </div>
+          <button
+            onClick={testMpesaConnection}
+            disabled={testingConn}
+            className="px-3 py-1 bg-[#191C22] hover:bg-[#282C35] border border-zinc-700 rounded-lg text-zinc-200 text-xs font-bold transition-all disabled:opacity-50"
+          >
+            {testingConn ? "Testing..." : "Test Daraja Token Connection"}
+          </button>
+        </div>
+
+        {connResult && (
+          <div className={`mb-6 p-4 rounded-xl text-xs font-mono border ${
+            connResult.status === "SUCCESS" ? "bg-emerald-950/70 border-[#00E575] text-[#00E575]" : "bg-red-950/70 border-red-500 text-red-300"
+          }`}>
+            <div className="font-bold text-sm mb-1">
+              {connResult.status === "SUCCESS" ? "✓ Daraja Connection Successful!" : "✕ Connection Issue Detected"}
+            </div>
+            <p>{connResult.message || connResult.error}</p>
+            {connResult.mode && <p className="mt-1 opacity-80">Mode: {connResult.mode}</p>}
+            {connResult.troubleshooting && (
+              <ul className="list-disc list-inside mt-2 space-y-1 text-zinc-300">
+                {connResult.troubleshooting.map((tip: string, idx: number) => (
+                  <li key={idx}>{tip}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Status Alerts */}
         {statusMsg && (
           <div className="mb-6 p-4 bg-emerald-950/70 border border-[#00E575] rounded-xl text-xs sm:text-sm text-[#00E575] font-mono flex items-start gap-2.5">
             <CheckCircle2 size={18} className="mt-0.5 flex-shrink-0" />
@@ -112,6 +166,7 @@ export default function CashierPage() {
           </div>
         )}
 
+        {/* M-PESA STK Push Form */}
         <div className="bg-[#10131A] border border-[#282C35] rounded-2xl p-6 shadow-2xl">
           <div className="flex items-center gap-3 pb-4 mb-5 border-b border-[#282C35]">
             <div className="w-12 h-12 rounded-xl bg-[#00A859] text-white font-black flex items-center justify-center text-xl shadow-lg shadow-green-500/20">M</div>
@@ -122,6 +177,7 @@ export default function CashierPage() {
           </div>
 
           <form onSubmit={handleDeposit} className="space-y-5">
+            {/* Phone Number Input */}
             <div>
               <label className="text-xs font-mono text-zinc-400 block mb-1.5 flex items-center justify-between">
                 <span>SAFARICOM M-PESA PHONE NUMBER</span>
@@ -143,6 +199,7 @@ export default function CashierPage() {
               </div>
             </div>
 
+            {/* Quick Amount Selector Chips */}
             <div>
               <label className="text-xs font-mono text-zinc-400 block mb-2">SELECT DEPOSIT AMOUNT (KSH)</label>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
@@ -174,6 +231,7 @@ export default function CashierPage() {
               />
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading || waitingForPin || amountKSH < 10}
@@ -194,6 +252,7 @@ export default function CashierPage() {
             </button>
           </form>
 
+          {/* Security Assurance */}
           <div className="mt-6 pt-4 border-t border-[#1F242D] flex items-center justify-between text-[11px] font-mono text-zinc-500">
             <span className="flex items-center gap-1.5 text-zinc-400">
               <ShieldCheck size={14} className="text-[#00E575]" /> Safaricom Daraja SSL 256-bit Encrypted
