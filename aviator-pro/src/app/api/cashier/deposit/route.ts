@@ -3,7 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { Transaction } from "@/lib/db/models/Transaction";
-import { getDepositKESPerUsd, initiateStkPush, normalizeKenyanPhoneNumber } from "@/lib/mpesa";
+import {
+  getDepositKESPerUsd,
+  getSafeMpesaErrorMessage,
+  initiateStkPush,
+  normalizeKenyanPhoneNumber,
+} from "@/lib/mpesa";
 import { verifyAndSettleStkDeposit } from "@/lib/mpesa-deposits";
 
 export const runtime = "nodejs";
@@ -126,18 +131,19 @@ export async function POST(req: NextRequest) {
         message: stkResponse.CustomerMessage || "Check your phone and approve the M-Pesa prompt.",
       }, { status: 202 });
     } catch (error) {
+      const safeErrorMessage = getSafeMpesaErrorMessage(error);
       await Transaction.updateOne(
         { _id: transaction._id, status: "pending", checkoutRequestId: { $exists: false } },
         {
           $set: {
             status: "failed",
-            resultDescription: "M-Pesa could not start the payment request",
+            resultDescription: safeErrorMessage,
           },
         }
       );
-      console.error("Failed to initiate M-Pesa STK Push", error);
+      console.error("Failed to initiate M-Pesa STK Push", safeErrorMessage);
       return NextResponse.json(
-        { error: "Unable to start the M-Pesa payment. Check your number and try again." },
+        { error: `Unable to start the M-Pesa payment: ${safeErrorMessage}` },
         { status: 502 }
       );
     }

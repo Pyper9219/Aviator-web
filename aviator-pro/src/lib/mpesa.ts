@@ -40,9 +40,13 @@ export function getMpesaCredentials(): MpesaCredentials {
   const passkey = process.env.MPESA_PASSKEY;
   const callbackUrl =
     process.env.MPESA_CALLBACK_URL ||
-    (process.env.NEXT_PUBLIC_APP_URL
-      ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "")}/api/cashier/mpesa/callback`
-      : "");
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.replace(/\/+$/, "")}/api/cashier/mpesa/callback`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL.replace(/\/+$/, "")}/api/cashier/mpesa/callback`
+        : process.env.NEXT_PUBLIC_APP_URL
+          ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "")}/api/cashier/mpesa/callback`
+          : "");
   const environment = process.env.MPESA_ENVIRONMENT || "sandbox";
 
   if (!consumerKey || !consumerSecret || !shortcode || !passkey) {
@@ -61,7 +65,13 @@ export function getMpesaCredentials(): MpesaCredentials {
   } catch {
     throw new Error("MPESA_CALLBACK_URL must be a valid public HTTPS URL");
   }
-  if (parsedCallbackUrl.protocol !== "https:" || parsedCallbackUrl.username || parsedCallbackUrl.password) {
+  const localHostnames = new Set(["localhost", "127.0.0.1", "::1"]);
+  if (
+    parsedCallbackUrl.protocol !== "https:" ||
+    parsedCallbackUrl.username ||
+    parsedCallbackUrl.password ||
+    localHostnames.has(parsedCallbackUrl.hostname)
+  ) {
     throw new Error("MPESA_CALLBACK_URL must be a valid public HTTPS URL");
   }
 
@@ -207,6 +217,34 @@ export function normalizeKenyanPhoneNumber(phone: unknown): string | null {
       : digits;
 
   return /^254[17]\d{8}$/.test(international) ? international : null;
+}
+
+export function getSafeMpesaErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message.includes("MPESA_CALLBACK_URL")) {
+    return "The M-Pesa callback URL must be public HTTPS. Set MPESA_CALLBACK_URL to your deployed site's /api/cashier/mpesa/callback URL.";
+  }
+  if (message.includes("M-Pesa credentials are not completely configured")) {
+    return "M-Pesa setup is incomplete. Check that the consumer key, consumer secret, shortcode, and passkey are configured for the same Daraja environment.";
+  }
+  if (
+    /invalid credential|invalid consumer|unable to authenticate|access token|unauthorized/i.test(message)
+  ) {
+    return "Safaricom rejected the Daraja credentials. Confirm the consumer key, consumer secret, shortcode, and passkey all belong to the selected Sandbox or Production environment.";
+  }
+  if (/fetch failed|timed out|timeout|network|enotfound|econn/i.test(message)) {
+    return "The app could not reach Safaricom. Check the Daraja environment and try again.";
+  }
+
+  const safeMessage = message
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\bBearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(/\b(access_token|consumer_secret|passkey|password)\s*[:=]\s*\S+/gi, "$1=[redacted]")
+    .trim()
+    .slice(0, 240);
+
+  return safeMessage || "Safaricom did not accept the payment request. Check your M-Pesa number and try again.";
 }
 
 export function getDepositKESPerUsd(): number | null {
