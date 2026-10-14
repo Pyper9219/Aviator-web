@@ -13,6 +13,7 @@ export default function Header({
 const [isMuted, setIsMuted] = React.useState(false);
   const toggleMute = () => { setIsMuted(!isMuted); const audios = document.querySelectorAll('audio'); audios.forEach(a => a.muted = !isMuted); }; balance, username }: HeaderProps) {
   const router = useRouter();
+  const [isMuted, setIsMuted] = React.useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
   // Sync mute state with localStorage so it persists across pages
@@ -90,6 +91,9 @@ const [isMuted, setIsMuted] = React.useState(false);
             {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
 
+                    <button onClick={() => { setIsMuted(m => !m); document.querySelectorAll('audio').forEach(a => a.muted = !isMuted); }} className="p-2 bg-[#191C22] hover:bg-[#282C35] border border-[#282C35] rounded-lg text-zinc-300 transition-colors" title="Toggle Sound">
+            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
           {/* LOGOUT BUTTON */}
           <button
             onClick={handleLogout}
@@ -119,4 +123,5 @@ const [isMuted, setIsMuted] = React.useState(false);
     </header>
   );
 }
+
 
