@@ -27,3 +27,7 @@ The cashier supports Safaricom Daraja STK Push deposits. Keep these credentials 
 - `DEPOSIT_KES_PER_USD` (optional deposit conversion override) or `WITHDRAWAL_KES_PER_USD` (KES credited per USD ledger unit; defaults to KSh 130 per USD)
 
 The default exchange rate is a rounded display/conversion fallback, not a guaranteed market or Safaricom rate; configure the server-side rate to the rate you intend to apply. The callback verifies the STK transaction with Safaricom before crediting the wallet. The database must support MongoDB transactions. M-Pesa withdrawals are KES-only and remain admin-approved/manual payouts; STK Push credentials do not enable automatic B2C disbursements. For sandbox deposits, use a Safaricom sandbox test MSISDN; live phone numbers do not receive sandbox STK prompts. Test with sandbox credentials before enabling live mode.
+
+## MongoDB authentication errors
+
+If the app reports that MongoDB authentication failed, confirm that `MONGODB_URI` uses a MongoDB Atlas **database user** (from **Database Access**), not an Atlas website login. Reset or verify that database user's password in Atlas, then update `MONGODB_URI` in the local `.env.local` and in the deployment environment, such as Vercel, and restart or redeploy the app. If the username or password contains URI-reserved characters, percent-encode those credentials in the URI. Do not share the URI or password in logs, screenshots, or support messages.
