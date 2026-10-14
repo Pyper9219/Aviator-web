@@ -1,14 +1,23 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, LogOut } from "lucide-react";
 
 interface HeaderProps {
   balance: number;
   username?: string;
 }
 
-export default function Header({ balance }: HeaderProps) {
+export default function Header({ balance, username }: HeaderProps) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-[#0B0E14] border-b border-[#282C35]">
       {/* Top Row: Brand & Live KSh Balance */}
@@ -22,7 +31,9 @@ export default function Header({ balance }: HeaderProps) {
             KENYA LIVE
           </span>
         </div>
+        
         <div className="flex items-center gap-2">
+          {/* Balance & Deposit */}
           <div className="flex items-center gap-2 px-3 py-1 bg-[#10131A] border border-[#282C35] rounded-lg font-mono">
             <span className="text-[10px] text-zinc-400 font-bold">KSH</span>
             <span className="text-sm font-bold text-[#00E575]">
@@ -31,19 +42,32 @@ export default function Header({ balance }: HeaderProps) {
             <Link
               href="/cashier"
               className="w-5 h-5 rounded bg-[#00E575] text-[#0B0E14] flex items-center justify-center font-bold text-xs hover:opacity-90 transition-transform active:scale-95"
-              title="Deposit Funds via M-PESA"
+              title="Deposit Funds"
             >
               <Plus size={13} strokeWidth={3} />
             </Link>
           </div>
+          
+          {/* Withdraw Link */}
           <Link
             href="/withdraw"
             className="px-2.5 py-1 bg-[#191C22] hover:bg-[#282C35] border border-[#282C35] rounded-lg font-mono text-xs text-zinc-300 font-bold transition-colors"
           >
             Withdraw
           </Link>
+
+          {/* LOGOUT BUTTON */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-red-950/30 hover:bg-red-900/50 border border-red-500/30 rounded-lg font-mono text-xs text-red-300 font-bold transition-colors"
+            title="Sign Out"
+          >
+            <LogOut size={14} />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
         </div>
       </div>
+      
       {/* Repeating Red Aeroplane Silhouette Ribbon */}
       <div className="flex items-center justify-around py-1.5 px-2 bg-[#06080C] border-t border-[#191C22] overflow-hidden opacity-90">
         {Array.from({ length: 4 }).map((_, i) => (
