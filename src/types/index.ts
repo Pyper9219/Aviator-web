@@ -1,11 +1,4 @@
-export interface IUser {
-  _id: string;
-  username: string;
-  email: string;
-  balanceUSD: number;
-  bonusBalanceUSD: number;
-  vipLevel: number;
-}
+export type GamePhase = "PREPARING" | "IN_FLIGHT" | "CRASHED";
 
 export interface IBetSlot {
   stake: number;
@@ -18,16 +11,12 @@ export interface IBetSlot {
   winAmount: number | null;
 }
 
-export type GamePhase = 'PREPARING' | 'IN_FLIGHT' | 'CRASHED';
-
-export interface GameState {
-  roundNumber: number;
-  phase: GamePhase;
-  multiplier: number;
-  elapsedSec: number;
-  crashMultiplier: number;
-  history: number[];
-  seeds: {
-    hash: string;
-  };
+export interface IOrbiterPlayer {
+  id: string;
+  username: string;
+  stake: number;
+  mult: number | null;
+  profit: number;
+  status: "IN_FLIGHT" | "CASHED_OUT" | "CRASHED";
+  timestamp: number;
 }

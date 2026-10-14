@@ -1,48 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db/mongodb';
-import { User } from '@/lib/db/models/User';
-import { Bet } from '@/lib/db/models/Bet';
+import { NextRequest, NextResponse } from "next/server";
+import { jwtVerify } from "jose";
+import { connectToDatabase } from "@/lib/db/mongodb";
+import { User } from "@/lib/db/models/User";
+
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "super-secret-jwt-key-aviator-production-flight-deck-token-12345");
 
 export async function POST(req: NextRequest) {
   try {
-    const { stakeAmount, consoleSlot, autoCashoutMultiplier } = await req.json();
+    const token = req.cookies.get("aviator_session")?.value;
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!stakeAmount || stakeAmount <= 0) {
-      return NextResponse.json({ error: 'Invalid stake amount' }, { status: 400 });
-    }
+    const { payload } = await jwtVerify(token, SECRET);
+    const { stakeAmount, consoleSlot } = await req.json();
+    const stake = parseFloat(stakeAmount);
 
-    try {
-      await connectToDatabase();
-      const user = await User.findOne();
+    if (!stake || stake <= 0) return NextResponse.json({ error: "Invalid stake" }, { status: 400 });
 
-      if (user) {
-        if (user.balanceUSD < stakeAmount) {
-          return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
-        }
+    await connectToDatabase();
+    const user = await User.findOneAndUpdate(
+      { _id: payload.id, balanceKSH: { $gte: stake } },
+      { $inc: { balanceKSH: -stake } },
+      { new: true }
+    );
 
-        user.balanceUSD -= stakeAmount;
-        await user.save();
+    if (!user) return NextResponse.json({ error: "Insufficient KSh balance. Please top up via M-PESA." }, { status: 400 });
 
-        const bet = await Bet.create({
-          roundNumber: 948202,
-          userId: user._id,
-          username: user.username,
-          consoleSlot: consoleSlot || 1,
-          stakeAmount,
-          autoCashoutMultiplier: autoCashoutMultiplier || null,
-          status: 'ACTIVE',
-        });
-
-        return NextResponse.json({ success: true, bet, newBalance: user.balanceUSD });
-      }
-    } catch (e) {}
-
-    return NextResponse.json({
-      success: true,
-      betId: `bet_${Date.now()}`,
-      stakeAmount,
-      consoleSlot,
-    });
+    return NextResponse.json({ success: true, betId: `bet_${Date.now()}_slot${consoleSlot}`, newBalance: user.balanceKSH });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

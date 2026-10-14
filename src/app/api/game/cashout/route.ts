@@ -1,48 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db/mongodb';
-import { User } from '@/lib/db/models/User';
-import { Bet } from '@/lib/db/models/Bet';
+import { NextRequest, NextResponse } from "next/server";
+import { jwtVerify } from "jose";
+import { connectToDatabase } from "@/lib/db/mongodb";
+import { User } from "@/lib/db/models/User";
+
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "super-secret-jwt-key-aviator-production-flight-deck-token-12345");
 
 export async function POST(req: NextRequest) {
   try {
-    const { betId, multiplier, stakeAmount } = await req.json();
+    const token = req.cookies.get("aviator_session")?.value;
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const payout = parseFloat((stakeAmount * multiplier).toFixed(2));
-    const profit = parseFloat((payout - stakeAmount).toFixed(2));
+    const { payload } = await jwtVerify(token, SECRET);
+    const { payoutAmount } = await req.json();
+    const payout = parseFloat(payoutAmount);
 
-    try {
-      await connectToDatabase();
-      const user = await User.findOne();
+    if (!payout || payout <= 0) return NextResponse.json({ error: "Invalid payout amount" }, { status: 400 });
 
-      if (user) {
-        user.balanceUSD += payout;
-        await user.save();
+    await connectToDatabase();
+    const user = await User.findByIdAndUpdate(
+      payload.id,
+      { $inc: { balanceKSH: payout } },
+      { new: true }
+    );
 
-        if (betId && !betId.startsWith('mock_')) {
-          await Bet.findByIdAndUpdate(betId, {
-            cashedOut: true,
-            cashedOutMultiplier: multiplier,
-            payoutAmount: payout,
-            status: 'CASHED_OUT',
-          });
-        }
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-        return NextResponse.json({
-          success: true,
-          multiplier,
-          payout,
-          profit,
-          newBalance: user.balanceUSD,
-        });
-      }
-    } catch (e) {}
-
-    return NextResponse.json({
-      success: true,
-      multiplier,
-      payout,
-      profit,
-    });
+    return NextResponse.json({ success: true, newBalance: user.balanceKSH });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

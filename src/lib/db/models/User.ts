@@ -1,22 +1,26 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Document, Model } from "mongoose";
 
-export interface IUserModel extends Document {
+export interface IUserDoc extends Document {
   username: string;
-  email: string;
-  balanceUSD: number;
-  bonusBalanceUSD: number;
+  phoneOrEmail: string;
+  passwordHash: string;
+  balanceKSH: number;
+  lockedWithdrawalKSH: number;
+  role: "PILOT" | "ADMIN";
   vipLevel: number;
 }
 
-const UserSchema = new Schema<IUserModel>(
+const UserSchema = new Schema<IUserDoc>(
   {
     username: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
-    balanceUSD: { type: Number, required: true, default: 4850.50, min: 0 },
-    bonusBalanceUSD: { type: Number, default: 0.00, min: 0 },
-    vipLevel: { type: Number, default: 1 },
+    phoneOrEmail: { type: String, required: true, unique: true },
+    passwordHash: { type: String, required: true },
+    balanceKSH: { type: Number, default: 2500.00, min: 0 },
+    lockedWithdrawalKSH: { type: Number, default: 0.00, min: 0 },
+    role: { type: String, enum: ["PILOT", "ADMIN"], default: "PILOT" },
+    vipLevel: { type: Number, default: 1 }
   },
   { timestamps: true }
 );
 
-export const User: Model<IUserModel> = mongoose.models.User || mongoose.model<IUserModel>('User', UserSchema);
+export const User: Model<IUserDoc> = mongoose.models.User || mongoose.model<IUserDoc>("User", UserSchema);

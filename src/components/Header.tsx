@@ -1,49 +1,62 @@
-'use client';
+"use client";
+import React from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 
-import React from 'react';
-import Link from 'next/link';
-import { Plus, ShieldCheck, Volume2, User as UserIcon } from 'lucide-react';
+interface HeaderProps {
+  balance: number;
+  username?: string;
+}
 
-export default function Header({ balance }: { balance: number }) {
+export default function Header({ balance }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-[#10131A] border-b border-[#282C35]">
-      <Link href="/" className="flex items-center gap-2">
-        <div className="w-7 h-7 bg-[#E51E3D] rounded-sm flex items-center justify-center font-bold text-white text-xs">
-          ▲
-        </div>
-        <div className="font-extrabold tracking-wider text-base text-white">
-          AERO<span className="text-[#E51E3D]">CRASH</span>
-        </div>
-        <div className="flex items-center gap-1 ml-1 text-[10px] text-zinc-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#00E575] animate-ping"></span>
-          2,847 LIVE
-        </div>
-      </Link>
-
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-[#0B0E14] border border-[#282C35] rounded-full">
-          <span className="text-[10px] font-mono text-zinc-400">BAL</span>
-          <span className="text-xs font-mono font-bold text-[#00E575]">
-            ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    <header className="sticky top-0 z-50 bg-[#0B0E14] border-b border-[#282C35]">
+      {/* Top Row: Brand & Live KSh Balance */}
+      <div className="flex items-center justify-between px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#E51E3D]" />
+          <span className="font-mono font-black text-lg tracking-wider text-white">
+            AVIATOR
           </span>
+          <span className="px-2 py-0.5 rounded bg-red-950/80 border border-red-500/50 text-[#FF2B4D] font-mono text-[10px] font-bold">
+            KENYA LIVE
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-1 bg-[#10131A] border border-[#282C35] rounded-lg font-mono">
+            <span className="text-[10px] text-zinc-400 font-bold">KSH</span>
+            <span className="text-sm font-bold text-[#00E575]">
+              {balance.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <Link
+              href="/cashier"
+              className="w-5 h-5 rounded bg-[#00E575] text-[#0B0E14] flex items-center justify-center font-bold text-xs hover:opacity-90 transition-transform active:scale-95"
+              title="Deposit Funds via M-PESA"
+            >
+              <Plus size={13} strokeWidth={3} />
+            </Link>
+          </div>
           <Link
-            href="/cashier"
-            className="w-5 h-5 rounded-full bg-[#00E575] text-[#0B0E14] flex items-center justify-center hover:opacity-90 font-bold ml-0.5"
-            title="Fast Deposit"
+            href="/withdraw"
+            className="px-2.5 py-1 bg-[#191C22] hover:bg-[#282C35] border border-[#282C35] rounded-lg font-mono text-xs text-zinc-300 font-bold transition-colors"
           >
-            <Plus size={13} strokeWidth={3} />
+            Withdraw
           </Link>
         </div>
-
-        <button className="p-1.5 text-zinc-400 hover:text-white rounded bg-[#191C22]">
-          <ShieldCheck size={16} />
-        </button>
-        <button className="p-1.5 text-zinc-400 hover:text-white rounded bg-[#191C22]">
-          <Volume2 size={16} />
-        </button>
-        <button className="p-1.5 text-zinc-400 hover:text-white rounded bg-[#191C22]">
-          <UserIcon size={16} />
-        </button>
+      </div>
+      {/* Repeating Red Aeroplane Silhouette Ribbon */}
+      <div className="flex items-center justify-around py-1.5 px-2 bg-[#06080C] border-t border-[#191C22] overflow-hidden opacity-90">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex-shrink-0">
+            <svg width="74" height="22" viewBox="0 0 120 40" fill="none">
+              <path d="M5 25 C15 23, 45 21, 95 20 C105 19, 112 22, 114 25 C114 28, 105 31, 95 30 C45 30, 15 29, 5 25 Z" fill="#E51E3D" />
+              <path d="M45 20 L70 5 C74 3, 80 4, 78 8 L60 20 Z" fill="#C4122E" />
+              <path d="M42 28 L64 38 C67 40, 74 39, 72 36 L58 28 Z" fill="#9F0B23" />
+              <path d="M5 25 L18 8 C20 5, 24 6, 23 10 L18 25 Z" fill="#E51E3D" />
+              <line x1="114" y1="8" x2="114" y2="40" stroke="#FFFFFF" strokeWidth="2.5" />
+            </svg>
+          </div>
+        ))}
       </div>
     </header>
   );
